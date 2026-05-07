@@ -13,6 +13,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as AppIndexRouteImport } from './routes/_app.index'
 import { Route as AppEmployeesRouteImport } from './routes/_app.employees'
+import { Route as AppAttendanceRouteImport } from './routes/_app.attendance'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -33,14 +34,21 @@ const AppEmployeesRoute = AppEmployeesRouteImport.update({
   path: '/employees',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAttendanceRoute = AppAttendanceRouteImport.update({
+  id: '/attendance',
+  path: '/attendance',
+  getParentRoute: () => AppRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/login': typeof LoginRoute
+  '/attendance': typeof AppAttendanceRoute
   '/employees': typeof AppEmployeesRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
+  '/attendance': typeof AppAttendanceRoute
   '/employees': typeof AppEmployeesRoute
   '/': typeof AppIndexRoute
 }
@@ -48,15 +56,22 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
+  '/_app/attendance': typeof AppAttendanceRoute
   '/_app/employees': typeof AppEmployeesRoute
   '/_app/': typeof AppIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/login' | '/employees'
+  fullPaths: '/' | '/login' | '/attendance' | '/employees'
   fileRoutesByTo: FileRoutesByTo
-  to: '/login' | '/employees' | '/'
-  id: '__root__' | '/_app' | '/login' | '/_app/employees' | '/_app/'
+  to: '/login' | '/attendance' | '/employees' | '/'
+  id:
+    | '__root__'
+    | '/_app'
+    | '/login'
+    | '/_app/attendance'
+    | '/_app/employees'
+    | '/_app/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -94,15 +109,24 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppEmployeesRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/attendance': {
+      id: '/_app/attendance'
+      path: '/attendance'
+      fullPath: '/attendance'
+      preLoaderRoute: typeof AppAttendanceRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
 interface AppRouteChildren {
+  AppAttendanceRoute: typeof AppAttendanceRoute
   AppEmployeesRoute: typeof AppEmployeesRoute
   AppIndexRoute: typeof AppIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppAttendanceRoute: AppAttendanceRoute,
   AppEmployeesRoute: AppEmployeesRoute,
   AppIndexRoute: AppIndexRoute,
 }
