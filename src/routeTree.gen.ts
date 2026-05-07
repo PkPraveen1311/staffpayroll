@@ -9,61 +9,226 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/index'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as AppRouteImport } from './routes/_app'
+import { Route as AppIndexRouteImport } from './routes/_app.index'
+import { Route as AppSettingsRouteImport } from './routes/_app.settings'
+import { Route as AppPayslipsRouteImport } from './routes/_app.payslips'
+import { Route as AppPayrollRouteImport } from './routes/_app.payroll'
+import { Route as AppLeavesRouteImport } from './routes/_app.leaves'
+import { Route as AppEmployeesRouteImport } from './routes/_app.employees'
+import { Route as AppAttendanceRouteImport } from './routes/_app.attendance'
 
-const IndexRoute = IndexRouteImport.update({
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppRoute = AppRouteImport.update({
+  id: '/_app',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppIndexRoute = AppIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSettingsRoute = AppSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPayslipsRoute = AppPayslipsRouteImport.update({
+  id: '/payslips',
+  path: '/payslips',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPayrollRoute = AppPayrollRouteImport.update({
+  id: '/payroll',
+  path: '/payroll',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppLeavesRoute = AppLeavesRouteImport.update({
+  id: '/leaves',
+  path: '/leaves',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppEmployeesRoute = AppEmployeesRouteImport.update({
+  id: '/employees',
+  path: '/employees',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAttendanceRoute = AppAttendanceRouteImport.update({
+  id: '/attendance',
+  path: '/attendance',
+  getParentRoute: () => AppRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
+  '/': typeof AppIndexRoute
+  '/login': typeof LoginRoute
+  '/attendance': typeof AppAttendanceRoute
+  '/employees': typeof AppEmployeesRoute
+  '/leaves': typeof AppLeavesRoute
+  '/payroll': typeof AppPayrollRoute
+  '/payslips': typeof AppPayslipsRoute
+  '/settings': typeof AppSettingsRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
+  '/login': typeof LoginRoute
+  '/attendance': typeof AppAttendanceRoute
+  '/employees': typeof AppEmployeesRoute
+  '/leaves': typeof AppLeavesRoute
+  '/payroll': typeof AppPayrollRoute
+  '/payslips': typeof AppPayslipsRoute
+  '/settings': typeof AppSettingsRoute
+  '/': typeof AppIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
+  '/_app': typeof AppRouteWithChildren
+  '/login': typeof LoginRoute
+  '/_app/attendance': typeof AppAttendanceRoute
+  '/_app/employees': typeof AppEmployeesRoute
+  '/_app/leaves': typeof AppLeavesRoute
+  '/_app/payroll': typeof AppPayrollRoute
+  '/_app/payslips': typeof AppPayslipsRoute
+  '/_app/settings': typeof AppSettingsRoute
+  '/_app/': typeof AppIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/login'
+    | '/attendance'
+    | '/employees'
+    | '/leaves'
+    | '/payroll'
+    | '/payslips'
+    | '/settings'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/login'
+    | '/attendance'
+    | '/employees'
+    | '/leaves'
+    | '/payroll'
+    | '/payslips'
+    | '/settings'
+    | '/'
+  id:
+    | '__root__'
+    | '/_app'
+    | '/login'
+    | '/_app/attendance'
+    | '/_app/employees'
+    | '/_app/leaves'
+    | '/_app/payroll'
+    | '/_app/payslips'
+    | '/_app/settings'
+    | '/_app/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
+  AppRoute: typeof AppRouteWithChildren
+  LoginRoute: typeof LoginRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_app': {
+      id: '/_app'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AppRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_app/': {
+      id: '/_app/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AppIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/settings': {
+      id: '/_app/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof AppSettingsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/payslips': {
+      id: '/_app/payslips'
+      path: '/payslips'
+      fullPath: '/payslips'
+      preLoaderRoute: typeof AppPayslipsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/payroll': {
+      id: '/_app/payroll'
+      path: '/payroll'
+      fullPath: '/payroll'
+      preLoaderRoute: typeof AppPayrollRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/leaves': {
+      id: '/_app/leaves'
+      path: '/leaves'
+      fullPath: '/leaves'
+      preLoaderRoute: typeof AppLeavesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/employees': {
+      id: '/_app/employees'
+      path: '/employees'
+      fullPath: '/employees'
+      preLoaderRoute: typeof AppEmployeesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/attendance': {
+      id: '/_app/attendance'
+      path: '/attendance'
+      fullPath: '/attendance'
+      preLoaderRoute: typeof AppAttendanceRouteImport
+      parentRoute: typeof AppRoute
     }
   }
 }
 
+interface AppRouteChildren {
+  AppAttendanceRoute: typeof AppAttendanceRoute
+  AppEmployeesRoute: typeof AppEmployeesRoute
+  AppLeavesRoute: typeof AppLeavesRoute
+  AppPayrollRoute: typeof AppPayrollRoute
+  AppPayslipsRoute: typeof AppPayslipsRoute
+  AppSettingsRoute: typeof AppSettingsRoute
+  AppIndexRoute: typeof AppIndexRoute
+}
+
+const AppRouteChildren: AppRouteChildren = {
+  AppAttendanceRoute: AppAttendanceRoute,
+  AppEmployeesRoute: AppEmployeesRoute,
+  AppLeavesRoute: AppLeavesRoute,
+  AppPayrollRoute: AppPayrollRoute,
+  AppPayslipsRoute: AppPayslipsRoute,
+  AppSettingsRoute: AppSettingsRoute,
+  AppIndexRoute: AppIndexRoute,
+}
+
+const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
+  AppRoute: AppRouteWithChildren,
+  LoginRoute: LoginRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
