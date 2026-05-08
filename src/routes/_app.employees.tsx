@@ -22,13 +22,16 @@ type Employee = {
   id: string; employee_code: string; full_name: string; email: string; phone?: string | null;
   department?: string | null; designation?: string | null; joining_date: string;
   basic_salary: number; hra: number; allowances: number;
+  medical_allowance: number; leave_encashment: number; statutory_bonus: number; special_allowance: number;
   pf_enabled: boolean; esi_enabled: boolean; status: string; bank_account?: string | null; pan?: string | null;
 };
 
 const empty: Partial<Employee> = {
   employee_code: "", full_name: "", email: "", phone: "", department: "", designation: "",
   joining_date: new Date().toISOString().slice(0,10),
-  basic_salary: 0, hra: 0, allowances: 0, pf_enabled: true, esi_enabled: false, status: "active",
+  basic_salary: 0, hra: 0, allowances: 0,
+  medical_allowance: 0, leave_encashment: 0, statutory_bonus: 0, special_allowance: 0,
+  pf_enabled: true, esi_enabled: false, status: "active",
 };
 
 function EmployeesPage() {
