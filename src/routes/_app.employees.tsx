@@ -109,7 +109,11 @@ function EmployeesPage() {
                 <Field label="Bank account" value={editing.bank_account ?? ""} onChange={(v) => setEditing({ ...editing, bank_account: v })} />
                 <Field label="Basic salary (₹)" type="number" value={String(editing.basic_salary ?? 0)} onChange={(v) => setEditing({ ...editing, basic_salary: Number(v) })} />
                 <Field label="HRA (₹)" type="number" value={String(editing.hra ?? 0)} onChange={(v) => setEditing({ ...editing, hra: Number(v) })} />
-                <Field label="Allowances (₹)" type="number" value={String(editing.allowances ?? 0)} onChange={(v) => setEditing({ ...editing, allowances: Number(v) })} />
+                <Field label="Other Allowances (₹)" type="number" value={String(editing.allowances ?? 0)} onChange={(v) => setEditing({ ...editing, allowances: Number(v) })} />
+                <Field label="Medical Allowance (₹)" type="number" value={String(editing.medical_allowance ?? 0)} onChange={(v) => setEditing({ ...editing, medical_allowance: Number(v) })} />
+                <Field label="Leave Encashment (₹)" type="number" value={String(editing.leave_encashment ?? 0)} onChange={(v) => setEditing({ ...editing, leave_encashment: Number(v) })} />
+                <Field label="Statutory Bonus (₹)" type="number" value={String(editing.statutory_bonus ?? 0)} onChange={(v) => setEditing({ ...editing, statutory_bonus: Number(v) })} />
+                <Field label="Special Allowance (₹)" type="number" value={String(editing.special_allowance ?? 0)} onChange={(v) => setEditing({ ...editing, special_allowance: Number(v) })} />
                 <div className="flex items-center justify-between rounded-md border border-border/60 p-3">
                   <Label>PF enabled</Label>
                   <Switch checked={!!editing.pf_enabled} onCheckedChange={(v) => setEditing({ ...editing, pf_enabled: v })} />
