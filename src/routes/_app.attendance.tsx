@@ -15,7 +15,7 @@ export const Route = createFileRoute("/_app/attendance")({
   component: AttendancePage,
 });
 
-const STATUSES = ["present", "absent", "half-day", "leave"] as const;
+const STATUSES = ["present", "absent", "half-day", "leave", "week-off"] as const;
 
 function AttendancePage() {
   const qc = useQueryClient();
@@ -47,7 +47,7 @@ function AttendancePage() {
 
   const setStatus = async (employee_id: string, status: string) => {
     const existing: any = recMap.get(employee_id);
-    const hours = status === "present" ? 8 : status === "half-day" ? 4 : 0;
+    const hours = status === "present" || status === "week-off" ? 8 : status === "half-day" ? 4 : 0;
     const { error } = existing
       ? await supabase.from("attendance").update({ status, hours }).eq("id", existing.id)
       : await supabase.from("attendance").insert({ employee_id, date, status, hours });
