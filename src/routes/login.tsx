@@ -27,11 +27,9 @@ function LoginPage() {
   const submit = async (mode: "signin" | "signup") => {
     setLoading(true);
     try {
-      const fn = mode === "signin" ? supabase.auth.signInWithPassword : supabase.auth.signUp;
-      const { error } = await fn({
-        email, password,
-        ...(mode === "signup" ? { options: { emailRedirectTo: window.location.origin } } : {}),
-      } as any);
+      const { error } = mode === "signin"
+        ? await supabase.auth.signInWithPassword({ email, password })
+        : await supabase.auth.signUp({ email, password, options: { emailRedirectTo: window.location.origin } });
       if (error) throw error;
       toast.success(mode === "signin" ? "Welcome back" : "Account created");
       navigate({ to: "/" });
