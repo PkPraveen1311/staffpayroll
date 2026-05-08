@@ -59,6 +59,10 @@ function EmployeesPage() {
       basic_salary: Number(editing.basic_salary) || 0,
       hra: Number(editing.hra) || 0,
       allowances: Number(editing.allowances) || 0,
+      medical_allowance: Number(editing.medical_allowance) || 0,
+      leave_encashment: Number(editing.leave_encashment) || 0,
+      statutory_bonus: Number(editing.statutory_bonus) || 0,
+      special_allowance: Number(editing.special_allowance) || 0,
     };
     const { error } = editing.id
       ? await supabase.from("employees").update(payload).eq("id", editing.id)
