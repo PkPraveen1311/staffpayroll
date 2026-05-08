@@ -69,7 +69,11 @@ function PayrollPage() {
         const basic = Number(e.basic_salary) * ratio;
         const hra = Number(e.hra) * ratio;
         const allow = Number(e.allowances) * ratio;
-        const gross = basic + hra + allow;
+        const medical = Number(e.medical_allowance ?? 0) * ratio;
+        const leaveEnc = Number(e.leave_encashment ?? 0) * ratio;
+        const bonus = Number(e.statutory_bonus ?? 0) * ratio;
+        const special = Number(e.special_allowance ?? 0) * ratio;
+        const gross = basic + hra + allow + medical + leaveEnc + bonus + special;
         const pf = e.pf_enabled ? Math.min(basic * 0.12, 1800) : 0;
         const esi = e.esi_enabled && gross <= 21000 ? gross * 0.0075 : 0;
         const annual = gross * 12;
@@ -85,6 +89,8 @@ function PayrollPage() {
         return {
           payroll_run_id: runId, employee_id: e.id,
           basic: round(basic), hra: round(hra), allowances: round(allow), gross: round(gross),
+          medical_allowance: round(medical), leave_encashment: round(leaveEnc),
+          statutory_bonus: round(bonus), special_allowance: round(special),
           pf: round(pf), esi: round(esi), tds: round(tds),
           total_deductions: round(totalDed), net_pay: round(net), days_worked: daysWorked,
         };

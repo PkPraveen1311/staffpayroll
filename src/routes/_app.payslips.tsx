@@ -114,7 +114,11 @@ function SlipDialog({ slip, period }: { slip: any; period: string }) {
               <h4 className="text-xs uppercase tracking-wider text-muted-foreground mb-2">Earnings</h4>
               <Row k="Basic" v={slip.basic} />
               <Row k="HRA" v={slip.hra} />
-              <Row k="Allowances" v={slip.allowances} />
+              <Row k="Medical Allowance" v={slip.medical_allowance ?? 0} />
+              <Row k="Leave Encashment" v={slip.leave_encashment ?? 0} />
+              <Row k="Statutory Bonus" v={slip.statutory_bonus ?? 0} />
+              <Row k="Special Allowance" v={slip.special_allowance ?? 0} />
+              <Row k="Other Allowances" v={slip.allowances} />
               <Row k="Gross" v={slip.gross} bold />
             </div>
             <div>

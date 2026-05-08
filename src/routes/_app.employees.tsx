@@ -22,13 +22,16 @@ type Employee = {
   id: string; employee_code: string; full_name: string; email: string; phone?: string | null;
   department?: string | null; designation?: string | null; joining_date: string;
   basic_salary: number; hra: number; allowances: number;
+  medical_allowance: number; leave_encashment: number; statutory_bonus: number; special_allowance: number;
   pf_enabled: boolean; esi_enabled: boolean; status: string; bank_account?: string | null; pan?: string | null;
 };
 
 const empty: Partial<Employee> = {
   employee_code: "", full_name: "", email: "", phone: "", department: "", designation: "",
   joining_date: new Date().toISOString().slice(0,10),
-  basic_salary: 0, hra: 0, allowances: 0, pf_enabled: true, esi_enabled: false, status: "active",
+  basic_salary: 0, hra: 0, allowances: 0,
+  medical_allowance: 0, leave_encashment: 0, statutory_bonus: 0, special_allowance: 0,
+  pf_enabled: true, esi_enabled: false, status: "active",
 };
 
 function EmployeesPage() {
@@ -56,6 +59,10 @@ function EmployeesPage() {
       basic_salary: Number(editing.basic_salary) || 0,
       hra: Number(editing.hra) || 0,
       allowances: Number(editing.allowances) || 0,
+      medical_allowance: Number(editing.medical_allowance) || 0,
+      leave_encashment: Number(editing.leave_encashment) || 0,
+      statutory_bonus: Number(editing.statutory_bonus) || 0,
+      special_allowance: Number(editing.special_allowance) || 0,
     };
     const { error } = editing.id
       ? await supabase.from("employees").update(payload).eq("id", editing.id)
@@ -102,7 +109,11 @@ function EmployeesPage() {
                 <Field label="Bank account" value={editing.bank_account ?? ""} onChange={(v) => setEditing({ ...editing, bank_account: v })} />
                 <Field label="Basic salary (₹)" type="number" value={String(editing.basic_salary ?? 0)} onChange={(v) => setEditing({ ...editing, basic_salary: Number(v) })} />
                 <Field label="HRA (₹)" type="number" value={String(editing.hra ?? 0)} onChange={(v) => setEditing({ ...editing, hra: Number(v) })} />
-                <Field label="Allowances (₹)" type="number" value={String(editing.allowances ?? 0)} onChange={(v) => setEditing({ ...editing, allowances: Number(v) })} />
+                <Field label="Other Allowances (₹)" type="number" value={String(editing.allowances ?? 0)} onChange={(v) => setEditing({ ...editing, allowances: Number(v) })} />
+                <Field label="Medical Allowance (₹)" type="number" value={String(editing.medical_allowance ?? 0)} onChange={(v) => setEditing({ ...editing, medical_allowance: Number(v) })} />
+                <Field label="Leave Encashment (₹)" type="number" value={String(editing.leave_encashment ?? 0)} onChange={(v) => setEditing({ ...editing, leave_encashment: Number(v) })} />
+                <Field label="Statutory Bonus (₹)" type="number" value={String(editing.statutory_bonus ?? 0)} onChange={(v) => setEditing({ ...editing, statutory_bonus: Number(v) })} />
+                <Field label="Special Allowance (₹)" type="number" value={String(editing.special_allowance ?? 0)} onChange={(v) => setEditing({ ...editing, special_allowance: Number(v) })} />
                 <div className="flex items-center justify-between rounded-md border border-border/60 p-3">
                   <Label>PF enabled</Label>
                   <Switch checked={!!editing.pf_enabled} onCheckedChange={(v) => setEditing({ ...editing, pf_enabled: v })} />
@@ -152,7 +163,7 @@ function EmployeesPage() {
                 </TableCell>
                 <TableCell>{e.department || "—"}</TableCell>
                 <TableCell>{e.designation || "—"}</TableCell>
-                <TableCell className="text-right font-medium">{fmtINR(Number(e.basic_salary) + Number(e.hra) + Number(e.allowances))}</TableCell>
+                <TableCell className="text-right font-medium">{fmtINR(Number(e.basic_salary) + Number(e.hra) + Number(e.allowances) + Number(e.medical_allowance ?? 0) + Number(e.leave_encashment ?? 0) + Number(e.statutory_bonus ?? 0) + Number(e.special_allowance ?? 0))}</TableCell>
                 <TableCell><Badge variant={e.status === "active" ? "default" : "secondary"}>{e.status}</Badge></TableCell>
                 <TableCell className="text-right">
                   <Button size="icon" variant="ghost" onClick={() => { setEditing(e); setOpen(true); }}><Pencil className="h-4 w-4" /></Button>
