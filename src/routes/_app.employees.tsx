@@ -163,7 +163,7 @@ function EmployeesPage() {
                 </TableCell>
                 <TableCell>{e.department || "—"}</TableCell>
                 <TableCell>{e.designation || "—"}</TableCell>
-                <TableCell className="text-right font-medium">{fmtINR(Number(e.basic_salary) + Number(e.hra) + Number(e.allowances))}</TableCell>
+                <TableCell className="text-right font-medium">{fmtINR(Number(e.basic_salary) + Number(e.hra) + Number(e.allowances) + Number(e.medical_allowance ?? 0) + Number(e.leave_encashment ?? 0) + Number(e.statutory_bonus ?? 0) + Number(e.special_allowance ?? 0))}</TableCell>
                 <TableCell><Badge variant={e.status === "active" ? "default" : "secondary"}>{e.status}</Badge></TableCell>
                 <TableCell className="text-right">
                   <Button size="icon" variant="ghost" onClick={() => { setEditing(e); setOpen(true); }}><Pencil className="h-4 w-4" /></Button>
