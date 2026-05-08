@@ -67,10 +67,14 @@ export type Database = {
           hra: number
           id: string
           joining_date: string
+          leave_encashment: number
+          medical_allowance: number
           pan: string | null
           pf_enabled: boolean
           phone: string | null
+          special_allowance: number
           status: string
+          statutory_bonus: number
           updated_at: string
         }
         Insert: {
@@ -87,10 +91,14 @@ export type Database = {
           hra?: number
           id?: string
           joining_date?: string
+          leave_encashment?: number
+          medical_allowance?: number
           pan?: string | null
           pf_enabled?: boolean
           phone?: string | null
+          special_allowance?: number
           status?: string
+          statutory_bonus?: number
           updated_at?: string
         }
         Update: {
@@ -107,10 +115,14 @@ export type Database = {
           hra?: number
           id?: string
           joining_date?: string
+          leave_encashment?: number
+          medical_allowance?: number
           pan?: string | null
           pf_enabled?: boolean
           phone?: string | null
+          special_allowance?: number
           status?: string
+          statutory_bonus?: number
           updated_at?: string
         }
         Relationships: []
@@ -194,9 +206,13 @@ export type Database = {
           gross: number
           hra: number
           id: string
+          leave_encashment: number
+          medical_allowance: number
           net_pay: number
           payroll_run_id: string
           pf: number
+          special_allowance: number
+          statutory_bonus: number
           tds: number
           total_deductions: number
         }
@@ -210,9 +226,13 @@ export type Database = {
           gross?: number
           hra?: number
           id?: string
+          leave_encashment?: number
+          medical_allowance?: number
           net_pay?: number
           payroll_run_id: string
           pf?: number
+          special_allowance?: number
+          statutory_bonus?: number
           tds?: number
           total_deductions?: number
         }
@@ -226,9 +246,13 @@ export type Database = {
           gross?: number
           hra?: number
           id?: string
+          leave_encashment?: number
+          medical_allowance?: number
           net_pay?: number
           payroll_run_id?: string
           pf?: number
+          special_allowance?: number
+          statutory_bonus?: number
           tds?: number
           total_deductions?: number
         }
