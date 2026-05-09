@@ -122,6 +122,13 @@ function EmployeesPage() {
                   <Label>ESI enabled</Label>
                   <Switch checked={!!editing.esi_enabled} onCheckedChange={(v) => setEditing({ ...editing, esi_enabled: v })} />
                 </div>
+                <div className="flex items-center justify-between rounded-md border border-border/60 p-3">
+                  <div>
+                    <Label>TDS deduction</Label>
+                    <p className="text-xs text-muted-foreground">Optional — enable to deduct income tax monthly.</p>
+                  </div>
+                  <Switch checked={!!editing.tds_enabled} onCheckedChange={(v) => setEditing({ ...editing, tds_enabled: v })} />
+                </div>
               </div>
             )}
             <DialogFooter>
