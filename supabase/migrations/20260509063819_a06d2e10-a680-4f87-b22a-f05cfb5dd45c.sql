@@ -1,0 +1,1 @@
+ALTER TABLE public.employees ADD COLUMN IF NOT EXISTS tds_enabled boolean NOT NULL DEFAULT false;

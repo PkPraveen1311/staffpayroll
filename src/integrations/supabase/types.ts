@@ -75,6 +75,7 @@ export type Database = {
           special_allowance: number
           status: string
           statutory_bonus: number
+          tds_enabled: boolean
           updated_at: string
         }
         Insert: {
@@ -99,6 +100,7 @@ export type Database = {
           special_allowance?: number
           status?: string
           statutory_bonus?: number
+          tds_enabled?: boolean
           updated_at?: string
         }
         Update: {
@@ -123,6 +125,7 @@ export type Database = {
           special_allowance?: number
           status?: string
           statutory_bonus?: number
+          tds_enabled?: boolean
           updated_at?: string
         }
         Relationships: []
