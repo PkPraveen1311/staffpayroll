@@ -24,7 +24,6 @@ type Employee = {
   basic_salary: number; hra: number; allowances: number;
   medical_allowance: number; leave_encashment: number; statutory_bonus: number; special_allowance: number;
   pf_enabled: boolean; esi_enabled: boolean; tds_enabled: boolean; status: string; bank_account?: string | null; pan?: string | null;
-// ... keep existing code
 };
 
 const empty: Partial<Employee> = {
@@ -32,7 +31,7 @@ const empty: Partial<Employee> = {
   joining_date: new Date().toISOString().slice(0,10),
   basic_salary: 0, hra: 0, allowances: 0,
   medical_allowance: 0, leave_encashment: 0, statutory_bonus: 0, special_allowance: 0,
-  pf_enabled: true, esi_enabled: false, status: "active",
+  pf_enabled: true, esi_enabled: false, tds_enabled: false, status: "active",
 };
 
 function EmployeesPage() {
