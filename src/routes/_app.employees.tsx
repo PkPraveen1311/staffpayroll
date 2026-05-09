@@ -23,7 +23,8 @@ type Employee = {
   department?: string | null; designation?: string | null; joining_date: string;
   basic_salary: number; hra: number; allowances: number;
   medical_allowance: number; leave_encashment: number; statutory_bonus: number; special_allowance: number;
-  pf_enabled: boolean; esi_enabled: boolean; status: string; bank_account?: string | null; pan?: string | null;
+  pf_enabled: boolean; esi_enabled: boolean; tds_enabled: boolean; status: string; bank_account?: string | null; pan?: string | null;
+// ... keep existing code
 };
 
 const empty: Partial<Employee> = {
