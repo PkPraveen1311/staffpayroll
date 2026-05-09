@@ -74,16 +74,22 @@ function PayrollPage() {
         const bonus = Number(e.statutory_bonus ?? 0) * ratio;
         const special = Number(e.special_allowance ?? 0) * ratio;
         const gross = basic + hra + allow + medical + leaveEnc + bonus + special;
-        const pf = e.pf_enabled ? Math.min(basic * 0.12, 1800) : 0;
-        const esi = e.esi_enabled && gross <= 21000 ? gross * 0.0075 : 0;
-        const annual = gross * 12;
-        let tax = 0;
-        if (annual > 1500000) tax = (annual - 1500000) * 0.30 + 150000;
-        else if (annual > 1200000) tax = (annual - 1200000) * 0.20 + 90000;
-        else if (annual > 900000) tax = (annual - 900000) * 0.15 + 45000;
-        else if (annual > 600000) tax = (annual - 600000) * 0.10 + 15000;
-        else if (annual > 300000) tax = (annual - 300000) * 0.05;
-        const tds = Math.max(0, tax / 12);
+        // PF: 12% of basic (no 1800 cap)
+        const pf = e.pf_enabled ? basic * 0.12 : 0;
+        // ESI: 0.75% of basic (new wage rule), eligibility checked on basic <= 21000
+        const esi = e.esi_enabled && basic <= 21000 ? basic * 0.0075 : 0;
+        // TDS: only if explicitly enabled per employee
+        let tds = 0;
+        if (e.tds_enabled) {
+          const annual = gross * 12;
+          let tax = 0;
+          if (annual > 1500000) tax = (annual - 1500000) * 0.30 + 150000;
+          else if (annual > 1200000) tax = (annual - 1200000) * 0.20 + 90000;
+          else if (annual > 900000) tax = (annual - 900000) * 0.15 + 45000;
+          else if (annual > 600000) tax = (annual - 600000) * 0.10 + 15000;
+          else if (annual > 300000) tax = (annual - 300000) * 0.05;
+          tds = Math.max(0, tax / 12);
+        }
         const totalDed = pf + esi + tds;
         const net = gross - totalDed;
         return {

@@ -23,7 +23,7 @@ type Employee = {
   department?: string | null; designation?: string | null; joining_date: string;
   basic_salary: number; hra: number; allowances: number;
   medical_allowance: number; leave_encashment: number; statutory_bonus: number; special_allowance: number;
-  pf_enabled: boolean; esi_enabled: boolean; status: string; bank_account?: string | null; pan?: string | null;
+  pf_enabled: boolean; esi_enabled: boolean; tds_enabled: boolean; status: string; bank_account?: string | null; pan?: string | null;
 };
 
 const empty: Partial<Employee> = {
@@ -31,7 +31,7 @@ const empty: Partial<Employee> = {
   joining_date: new Date().toISOString().slice(0,10),
   basic_salary: 0, hra: 0, allowances: 0,
   medical_allowance: 0, leave_encashment: 0, statutory_bonus: 0, special_allowance: 0,
-  pf_enabled: true, esi_enabled: false, status: "active",
+  pf_enabled: true, esi_enabled: false, tds_enabled: false, status: "active",
 };
 
 function EmployeesPage() {
@@ -121,6 +121,13 @@ function EmployeesPage() {
                 <div className="flex items-center justify-between rounded-md border border-border/60 p-3">
                   <Label>ESI enabled</Label>
                   <Switch checked={!!editing.esi_enabled} onCheckedChange={(v) => setEditing({ ...editing, esi_enabled: v })} />
+                </div>
+                <div className="flex items-center justify-between rounded-md border border-border/60 p-3">
+                  <div>
+                    <Label>TDS deduction</Label>
+                    <p className="text-xs text-muted-foreground">Optional — enable to deduct income tax monthly.</p>
+                  </div>
+                  <Switch checked={!!editing.tds_enabled} onCheckedChange={(v) => setEditing({ ...editing, tds_enabled: v })} />
                 </div>
               </div>
             )}
