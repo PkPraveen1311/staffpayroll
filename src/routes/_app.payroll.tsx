@@ -55,14 +55,18 @@ function PayrollPage() {
       const { data: existing } = await supabase.from("payroll_runs").select("*").eq("month", month).eq("year", year).maybeSingle();
       let runId = existing?.id;
       const incentiveMap = new Map<string, number>();
+      const advanceMap = new Map<string, number>();
       if (!runId) {
         const { data: newRun, error: re } = await supabase.from("payroll_runs").insert({ month, year, status: "draft" }).select().single();
         if (re) throw re;
         runId = newRun.id;
       } else {
-        // preserve manually-entered incentives across re-runs
-        const { data: prev } = await supabase.from("payslips").select("employee_id, incentive").eq("payroll_run_id", runId);
-        prev?.forEach((p: any) => incentiveMap.set(p.employee_id, Number(p.incentive ?? 0)));
+        // preserve manually-entered incentives & advances across re-runs
+        const { data: prev } = await supabase.from("payslips").select("employee_id, incentive, advance").eq("payroll_run_id", runId);
+        prev?.forEach((p: any) => {
+          incentiveMap.set(p.employee_id, Number(p.incentive ?? 0));
+          advanceMap.set(p.employee_id, Number(p.advance ?? 0));
+        });
         await supabase.from("payslips").delete().eq("payroll_run_id", runId);
       }
 
