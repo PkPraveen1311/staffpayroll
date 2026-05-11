@@ -82,6 +82,7 @@ function PayrollPage() {
         const bonus = Number(e.statutory_bonus ?? 0) * ratio;
         let special = Number(e.special_allowance ?? 0) * ratio;
         const incentive = incentiveMap.get(e.id) ?? 0;
+        const advance = advanceMap.get(e.id) ?? 0;
 
         // Employer contributions — included in CTC, computed on PF wage ceiling (₹15,000 basic)
         const pfWage = Math.min(basic, 15000 * ratio);
