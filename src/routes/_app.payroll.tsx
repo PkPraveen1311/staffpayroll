@@ -76,9 +76,23 @@ function PayrollPage() {
         const medical = Number(e.medical_allowance ?? 0) * ratio;
         const leaveEnc = Number(e.leave_encashment ?? 0) * ratio;
         const bonus = Number(e.statutory_bonus ?? 0) * ratio;
-        const special = Number(e.special_allowance ?? 0) * ratio;
-        const gross = basic + hra + allow + medical + leaveEnc + bonus + special;
+        let special = Number(e.special_allowance ?? 0) * ratio;
         const incentive = incentiveMap.get(e.id) ?? 0;
+
+        // Employer contributions — included in CTC, computed on PF wage ceiling (₹15,000 basic)
+        const pfWage = Math.min(basic, 15000 * ratio);
+        const employer_pf = e.pf_enabled ? pfWage * 0.12 : 0;
+        const edli = e.pf_enabled ? pfWage * 0.005 : 0;
+        const pf_admin_charges = e.pf_enabled ? pfWage * 0.005 : 0;
+        const employer_esi = e.esi_enabled && basic <= 21000 ? basic * 0.0325 : 0;
+
+        // CTC carve-out: employer PF + EDLI + admin are part of structured CTC,
+        // so reduce special allowance to back them out of the in-hand gross.
+        const ctcCarveOut = employer_pf + edli + pf_admin_charges;
+        special = Math.max(0, special - ctcCarveOut);
+
+        const gross = basic + hra + allow + medical + leaveEnc + bonus + special;
+
         // Employee deductions
         // PF: 12% of basic (no 1800 cap)
         const pf = e.pf_enabled ? basic * 0.12 : 0;
@@ -96,11 +110,6 @@ function PayrollPage() {
           else if (annual > 300000) tax = (annual - 300000) * 0.05;
           tds = Math.max(0, tax / 12);
         }
-        // Employer contributions (cost to company, not deducted from employee)
-        const employer_pf = e.pf_enabled ? basic * 0.12 : 0;
-        const edli = e.pf_enabled ? basic * 0.005 : 0;
-        const pf_admin_charges = e.pf_enabled ? basic * 0.005 : 0;
-        const employer_esi = e.esi_enabled && basic <= 21000 ? basic * 0.0325 : 0;
         const totalDed = pf + esi + tds;
         const net = gross + incentive - totalDed;
         return {
