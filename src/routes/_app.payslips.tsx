@@ -129,9 +129,10 @@ function PayslipsPage() {
   );
 }
 
-function IncentiveCell({ slip, onSave }: { slip: any; onSave: (s: any, n: number) => void }) {
-  const [val, setVal] = useState<string>(String(slip.incentive ?? 0));
-  const dirty = Number(val || 0) !== Number(slip.incentive ?? 0);
+function EditableNumCell({ value, onSave }: { value: number | string | null | undefined; onSave: (n: number) => void }) {
+  const initial = String(value ?? 0);
+  const [val, setVal] = useState<string>(initial);
+  const dirty = Number(val || 0) !== Number(initial || 0);
   return (
     <div className="flex items-center justify-end gap-1">
       <Input
@@ -142,7 +143,7 @@ function IncentiveCell({ slip, onSave }: { slip: any; onSave: (s: any, n: number
         min={0}
       />
       {dirty && (
-        <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => onSave(slip, Number(val || 0))}>
+        <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => onSave(Number(val || 0))}>
           <Check className="h-4 w-4 text-primary" />
         </Button>
       )}
