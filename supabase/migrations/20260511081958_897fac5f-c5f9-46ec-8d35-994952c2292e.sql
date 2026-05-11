@@ -1,0 +1,7 @@
+
+ALTER TABLE public.payslips
+  ADD COLUMN IF NOT EXISTS incentive numeric NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS employer_pf numeric NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS employer_esi numeric NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS pf_admin_charges numeric NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS edli numeric NOT NULL DEFAULT 0;
