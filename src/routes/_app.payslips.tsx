@@ -193,6 +193,7 @@ function SlipDialog({ slip, period }: { slip: any; period: string }) {
               <Row k="PF (12% of basic)" v={slip.pf} />
               <Row k="ESI" v={slip.esi} />
               <Row k="TDS" v={slip.tds} />
+              <Row k="Advance" v={slip.advance ?? 0} />
               <Row k="Total" v={slip.total_deductions} bold />
 
               <h4 className="text-xs uppercase tracking-wider text-muted-foreground mt-4 mb-2">Employer contributions</h4>
