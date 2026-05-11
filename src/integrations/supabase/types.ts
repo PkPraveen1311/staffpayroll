@@ -204,16 +204,21 @@ export type Database = {
           basic: number
           created_at: string
           days_worked: number
+          edli: number
           employee_id: string
+          employer_esi: number
+          employer_pf: number
           esi: number
           gross: number
           hra: number
           id: string
+          incentive: number
           leave_encashment: number
           medical_allowance: number
           net_pay: number
           payroll_run_id: string
           pf: number
+          pf_admin_charges: number
           special_allowance: number
           statutory_bonus: number
           tds: number
@@ -224,16 +229,21 @@ export type Database = {
           basic?: number
           created_at?: string
           days_worked?: number
+          edli?: number
           employee_id: string
+          employer_esi?: number
+          employer_pf?: number
           esi?: number
           gross?: number
           hra?: number
           id?: string
+          incentive?: number
           leave_encashment?: number
           medical_allowance?: number
           net_pay?: number
           payroll_run_id: string
           pf?: number
+          pf_admin_charges?: number
           special_allowance?: number
           statutory_bonus?: number
           tds?: number
@@ -244,16 +254,21 @@ export type Database = {
           basic?: number
           created_at?: string
           days_worked?: number
+          edli?: number
           employee_id?: string
+          employer_esi?: number
+          employer_pf?: number
           esi?: number
           gross?: number
           hra?: number
           id?: string
+          incentive?: number
           leave_encashment?: number
           medical_allowance?: number
           net_pay?: number
           payroll_run_id?: string
           pf?: number
+          pf_admin_charges?: number
           special_allowance?: number
           statutory_bonus?: number
           tds?: number

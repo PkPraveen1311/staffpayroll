@@ -1,19 +1,22 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Eye, Printer } from "lucide-react";
+import { Eye, Printer, Check } from "lucide-react";
 import { fmtINR, monthName } from "@/lib/format";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/payslips")({ component: PayslipsPage });
 
 function PayslipsPage() {
+  const qc = useQueryClient();
   const [runId, setRunId] = useState<string>("");
 
   const { data: runs = [] } = useQuery({
@@ -36,12 +39,25 @@ function PayslipsPage() {
 
   const run: any = runs.find((r: any) => r.id === effectiveRun);
 
+  const saveIncentive = async (slip: any, incentive: number) => {
+    const net = Number(slip.gross) + incentive - Number(slip.total_deductions);
+    const { error } = await supabase.from("payslips").update({ incentive, net_pay: Math.round(net * 100) / 100 }).eq("id", slip.id);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Incentive saved");
+    // refresh totals on the run
+    const { data: all } = await supabase.from("payslips").select("net_pay").eq("payroll_run_id", slip.payroll_run_id);
+    const totalNet = (all ?? []).reduce((s: number, p: any) => s + Number(p.net_pay), 0);
+    await supabase.from("payroll_runs").update({ total_net: totalNet }).eq("id", slip.payroll_run_id);
+    qc.invalidateQueries({ queryKey: ["payslips", effectiveRun] });
+    qc.invalidateQueries({ queryKey: ["payroll_runs"] });
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-end justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-3xl font-bold">Payslips</h1>
-          <p className="text-sm text-muted-foreground">Browse and print payslips for any payroll run.</p>
+          <p className="text-sm text-muted-foreground">Browse, add monthly incentives, and print payslips.</p>
         </div>
         <div className="space-y-1.5">
           <Label className="text-xs">Payroll run</Label>
@@ -61,18 +77,21 @@ function PayslipsPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Employee</TableHead><TableHead className="text-right">Days</TableHead>
-                <TableHead className="text-right">Gross</TableHead><TableHead className="text-right">Deductions</TableHead>
+                <TableHead className="text-right">Gross</TableHead>
+                <TableHead className="text-right w-40">Incentive</TableHead>
+                <TableHead className="text-right">Deductions</TableHead>
                 <TableHead className="text-right">Net pay</TableHead><TableHead className="text-right">Slip</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {slips.length === 0 ? (
-                <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">No payslips. Generate a payroll run first.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">No payslips. Generate a payroll run first.</TableCell></TableRow>
               ) : slips.map((s: any) => (
                 <TableRow key={s.id}>
                   <TableCell><div className="font-medium">{s.employees?.full_name}</div><div className="text-xs text-muted-foreground font-mono">{s.employees?.employee_code}</div></TableCell>
                   <TableCell className="text-right">{s.days_worked}</TableCell>
                   <TableCell className="text-right">{fmtINR(s.gross)}</TableCell>
+                  <TableCell className="text-right"><IncentiveCell slip={s} onSave={saveIncentive} /></TableCell>
                   <TableCell className="text-right">{fmtINR(s.total_deductions)}</TableCell>
                   <TableCell className="text-right font-semibold text-primary">{fmtINR(s.net_pay)}</TableCell>
                   <TableCell className="text-right">
@@ -88,13 +107,37 @@ function PayslipsPage() {
   );
 }
 
+function IncentiveCell({ slip, onSave }: { slip: any; onSave: (s: any, n: number) => void }) {
+  const [val, setVal] = useState<string>(String(slip.incentive ?? 0));
+  const dirty = Number(val || 0) !== Number(slip.incentive ?? 0);
+  return (
+    <div className="flex items-center justify-end gap-1">
+      <Input
+        type="number"
+        value={val}
+        onChange={(e) => setVal(e.target.value)}
+        className="h-8 w-28 text-right"
+        min={0}
+      />
+      {dirty && (
+        <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => onSave(slip, Number(val || 0))}>
+          <Check className="h-4 w-4 text-primary" />
+        </Button>
+      )}
+    </div>
+  );
+}
+
 function SlipDialog({ slip, period }: { slip: any; period: string }) {
+  const employerCost = Number(slip.gross) + Number(slip.incentive ?? 0)
+    + Number(slip.employer_pf ?? 0) + Number(slip.employer_esi ?? 0)
+    + Number(slip.edli ?? 0) + Number(slip.pf_admin_charges ?? 0);
   return (
     <Dialog>
       <DialogTrigger asChild>
         <Button size="sm" variant="ghost"><Eye className="h-4 w-4 mr-1" /> View</Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader><DialogTitle>Payslip — {period}</DialogTitle></DialogHeader>
         <div className="space-y-4 text-sm">
           <div className="flex items-center justify-between border-b border-border/60 pb-3">
@@ -119,14 +162,22 @@ function SlipDialog({ slip, period }: { slip: any; period: string }) {
               <Row k="Statutory Bonus" v={slip.statutory_bonus ?? 0} />
               <Row k="Special Allowance" v={slip.special_allowance ?? 0} />
               <Row k="Other Allowances" v={slip.allowances} />
-              <Row k="Gross" v={slip.gross} bold />
+              <Row k="Incentive" v={slip.incentive ?? 0} />
+              <Row k="Gross + Incentive" v={Number(slip.gross) + Number(slip.incentive ?? 0)} bold />
             </div>
             <div>
-              <h4 className="text-xs uppercase tracking-wider text-muted-foreground mb-2">Deductions</h4>
-              <Row k="PF" v={slip.pf} />
+              <h4 className="text-xs uppercase tracking-wider text-muted-foreground mb-2">Employee deductions</h4>
+              <Row k="PF (12% of basic)" v={slip.pf} />
               <Row k="ESI" v={slip.esi} />
               <Row k="TDS" v={slip.tds} />
               <Row k="Total" v={slip.total_deductions} bold />
+
+              <h4 className="text-xs uppercase tracking-wider text-muted-foreground mt-4 mb-2">Employer contributions</h4>
+              <Row k="Employer PF (12%)" v={slip.employer_pf ?? 0} />
+              <Row k="EDLI (0.5%)" v={slip.edli ?? 0} />
+              <Row k="PF Admin charges (0.5%)" v={slip.pf_admin_charges ?? 0} />
+              <Row k="Employer ESI (3.25%)" v={slip.employer_esi ?? 0} />
+              <Row k="Cost to Company" v={employerCost} bold />
             </div>
           </div>
 

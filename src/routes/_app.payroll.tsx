@@ -54,11 +54,15 @@ function PayrollPage() {
 
       const { data: existing } = await supabase.from("payroll_runs").select("*").eq("month", month).eq("year", year).maybeSingle();
       let runId = existing?.id;
+      const incentiveMap = new Map<string, number>();
       if (!runId) {
         const { data: newRun, error: re } = await supabase.from("payroll_runs").insert({ month, year, status: "draft" }).select().single();
         if (re) throw re;
         runId = newRun.id;
       } else {
+        // preserve manually-entered incentives across re-runs
+        const { data: prev } = await supabase.from("payslips").select("employee_id, incentive").eq("payroll_run_id", runId);
+        prev?.forEach((p: any) => incentiveMap.set(p.employee_id, Number(p.incentive ?? 0)));
         await supabase.from("payslips").delete().eq("payroll_run_id", runId);
       }
 
@@ -74,6 +78,8 @@ function PayrollPage() {
         const bonus = Number(e.statutory_bonus ?? 0) * ratio;
         const special = Number(e.special_allowance ?? 0) * ratio;
         const gross = basic + hra + allow + medical + leaveEnc + bonus + special;
+        const incentive = incentiveMap.get(e.id) ?? 0;
+        // Employee deductions
         // PF: 12% of basic (no 1800 cap)
         const pf = e.pf_enabled ? basic * 0.12 : 0;
         // ESI: 0.75% of basic (new wage rule), eligibility checked on basic <= 21000
@@ -81,7 +87,7 @@ function PayrollPage() {
         // TDS: only if explicitly enabled per employee
         let tds = 0;
         if (e.tds_enabled) {
-          const annual = gross * 12;
+          const annual = (gross + incentive) * 12;
           let tax = 0;
           if (annual > 1500000) tax = (annual - 1500000) * 0.30 + 150000;
           else if (annual > 1200000) tax = (annual - 1200000) * 0.20 + 90000;
@@ -90,14 +96,22 @@ function PayrollPage() {
           else if (annual > 300000) tax = (annual - 300000) * 0.05;
           tds = Math.max(0, tax / 12);
         }
+        // Employer contributions (cost to company, not deducted from employee)
+        const employer_pf = e.pf_enabled ? basic * 0.12 : 0;
+        const edli = e.pf_enabled ? basic * 0.005 : 0;
+        const pf_admin_charges = e.pf_enabled ? basic * 0.005 : 0;
+        const employer_esi = e.esi_enabled && basic <= 21000 ? basic * 0.0325 : 0;
         const totalDed = pf + esi + tds;
-        const net = gross - totalDed;
+        const net = gross + incentive - totalDed;
         return {
           payroll_run_id: runId, employee_id: e.id,
           basic: round(basic), hra: round(hra), allowances: round(allow), gross: round(gross),
           medical_allowance: round(medical), leave_encashment: round(leaveEnc),
           statutory_bonus: round(bonus), special_allowance: round(special),
+          incentive: round(incentive),
           pf: round(pf), esi: round(esi), tds: round(tds),
+          employer_pf: round(employer_pf), employer_esi: round(employer_esi),
+          edli: round(edli), pf_admin_charges: round(pf_admin_charges),
           total_deductions: round(totalDed), net_pay: round(net), days_worked: daysWorked,
         };
       });
