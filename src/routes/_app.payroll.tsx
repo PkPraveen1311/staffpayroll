@@ -115,14 +115,14 @@ function PayrollPage() {
           else if (annual > 300000) tax = (annual - 300000) * 0.05;
           tds = Math.max(0, tax / 12);
         }
-        const totalDed = pf + esi + tds;
+        const totalDed = pf + esi + tds + advance;
         const net = gross + incentive - totalDed;
         return {
           payroll_run_id: runId, employee_id: e.id,
           basic: round(basic), hra: round(hra), allowances: round(allow), gross: round(gross),
           medical_allowance: round(medical), leave_encashment: round(leaveEnc),
           statutory_bonus: round(bonus), special_allowance: round(special),
-          incentive: round(incentive),
+          incentive: round(incentive), advance: round(advance),
           pf: round(pf), esi: round(esi), tds: round(tds),
           employer_pf: round(employer_pf), employer_esi: round(employer_esi),
           edli: round(edli), pf_admin_charges: round(pf_admin_charges),
