@@ -94,8 +94,8 @@ function PayrollPage() {
         const gross = basic + hra + allow + medical + leaveEnc + bonus + special;
 
         // Employee deductions
-        // PF: 12% of basic (no 1800 cap)
-        const pf = e.pf_enabled ? basic * 0.12 : 0;
+        // PF: 12% of basic, capped at ₹1,800 (12% of ₹15,000 wage ceiling)
+        const pf = e.pf_enabled ? Math.min(basic * 0.12, 1800 * ratio) : 0;
         // ESI: 0.75% of basic (new wage rule), eligibility checked on basic <= 21000
         const esi = e.esi_enabled && basic <= 21000 ? basic * 0.0075 : 0;
         // TDS: only if explicitly enabled per employee
