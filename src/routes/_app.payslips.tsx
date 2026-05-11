@@ -40,14 +40,34 @@ function PayslipsPage() {
   const run: any = runs.find((r: any) => r.id === effectiveRun);
 
   const saveIncentive = async (slip: any, incentive: number) => {
-    const net = Number(slip.gross) + incentive - Number(slip.total_deductions);
+    const advance = Number(slip.advance ?? 0);
+    const baseDed = Number(slip.total_deductions) - Number(slip.advance ?? 0);
+    const newTotalDed = baseDed + advance;
+    const net = Number(slip.gross) + incentive - newTotalDed;
     const { error } = await supabase.from("payslips").update({ incentive, net_pay: Math.round(net * 100) / 100 }).eq("id", slip.id);
     if (error) { toast.error(error.message); return; }
     toast.success("Incentive saved");
-    // refresh totals on the run
-    const { data: all } = await supabase.from("payslips").select("net_pay").eq("payroll_run_id", slip.payroll_run_id);
+    await refreshTotals(slip.payroll_run_id);
+  };
+
+  const saveAdvance = async (slip: any, advance: number) => {
+    const baseDed = Number(slip.total_deductions) - Number(slip.advance ?? 0);
+    const newTotalDed = baseDed + advance;
+    const net = Number(slip.gross) + Number(slip.incentive ?? 0) - newTotalDed;
+    const { error } = await supabase.from("payslips").update({
+      advance,
+      total_deductions: Math.round(newTotalDed * 100) / 100,
+      net_pay: Math.round(net * 100) / 100,
+    }).eq("id", slip.id);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Advance saved");
+    await refreshTotals(slip.payroll_run_id);
+  };
+
+  const refreshTotals = async (payrollRunId: string) => {
+    const { data: all } = await supabase.from("payslips").select("net_pay").eq("payroll_run_id", payrollRunId);
     const totalNet = (all ?? []).reduce((s: number, p: any) => s + Number(p.net_pay), 0);
-    await supabase.from("payroll_runs").update({ total_net: totalNet }).eq("id", slip.payroll_run_id);
+    await supabase.from("payroll_runs").update({ total_net: totalNet }).eq("id", payrollRunId);
     qc.invalidateQueries({ queryKey: ["payslips", effectiveRun] });
     qc.invalidateQueries({ queryKey: ["payroll_runs"] });
   };
