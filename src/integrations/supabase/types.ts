@@ -200,6 +200,7 @@ export type Database = {
       }
       payslips: {
         Row: {
+          advance: number
           allowances: number
           basic: number
           created_at: string
@@ -225,6 +226,7 @@ export type Database = {
           total_deductions: number
         }
         Insert: {
+          advance?: number
           allowances?: number
           basic?: number
           created_at?: string
@@ -250,6 +252,7 @@ export type Database = {
           total_deductions?: number
         }
         Update: {
+          advance?: number
           allowances?: number
           basic?: number
           created_at?: string

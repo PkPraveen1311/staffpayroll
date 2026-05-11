@@ -1,0 +1,1 @@
+ALTER TABLE public.payslips ADD COLUMN IF NOT EXISTS advance numeric NOT NULL DEFAULT 0;

@@ -55,14 +55,18 @@ function PayrollPage() {
       const { data: existing } = await supabase.from("payroll_runs").select("*").eq("month", month).eq("year", year).maybeSingle();
       let runId = existing?.id;
       const incentiveMap = new Map<string, number>();
+      const advanceMap = new Map<string, number>();
       if (!runId) {
         const { data: newRun, error: re } = await supabase.from("payroll_runs").insert({ month, year, status: "draft" }).select().single();
         if (re) throw re;
         runId = newRun.id;
       } else {
-        // preserve manually-entered incentives across re-runs
-        const { data: prev } = await supabase.from("payslips").select("employee_id, incentive").eq("payroll_run_id", runId);
-        prev?.forEach((p: any) => incentiveMap.set(p.employee_id, Number(p.incentive ?? 0)));
+        // preserve manually-entered incentives & advances across re-runs
+        const { data: prev } = await supabase.from("payslips").select("employee_id, incentive, advance").eq("payroll_run_id", runId);
+        prev?.forEach((p: any) => {
+          incentiveMap.set(p.employee_id, Number(p.incentive ?? 0));
+          advanceMap.set(p.employee_id, Number(p.advance ?? 0));
+        });
         await supabase.from("payslips").delete().eq("payroll_run_id", runId);
       }
 
@@ -78,6 +82,7 @@ function PayrollPage() {
         const bonus = Number(e.statutory_bonus ?? 0) * ratio;
         let special = Number(e.special_allowance ?? 0) * ratio;
         const incentive = incentiveMap.get(e.id) ?? 0;
+        const advance = advanceMap.get(e.id) ?? 0;
 
         // Employer contributions — included in CTC, computed on PF wage ceiling (₹15,000 basic)
         const pfWage = Math.min(basic, 15000 * ratio);
@@ -94,8 +99,8 @@ function PayrollPage() {
         const gross = basic + hra + allow + medical + leaveEnc + bonus + special;
 
         // Employee deductions
-        // PF: 12% of basic (no 1800 cap)
-        const pf = e.pf_enabled ? basic * 0.12 : 0;
+        // PF: 12% of basic, capped at ₹1,800 (12% of ₹15,000 wage ceiling)
+        const pf = e.pf_enabled ? Math.min(basic * 0.12, 1800 * ratio) : 0;
         // ESI: 0.75% of basic (new wage rule), eligibility checked on basic <= 21000
         const esi = e.esi_enabled && basic <= 21000 ? basic * 0.0075 : 0;
         // TDS: only if explicitly enabled per employee
@@ -110,14 +115,14 @@ function PayrollPage() {
           else if (annual > 300000) tax = (annual - 300000) * 0.05;
           tds = Math.max(0, tax / 12);
         }
-        const totalDed = pf + esi + tds;
+        const totalDed = pf + esi + tds + advance;
         const net = gross + incentive - totalDed;
         return {
           payroll_run_id: runId, employee_id: e.id,
           basic: round(basic), hra: round(hra), allowances: round(allow), gross: round(gross),
           medical_allowance: round(medical), leave_encashment: round(leaveEnc),
           statutory_bonus: round(bonus), special_allowance: round(special),
-          incentive: round(incentive),
+          incentive: round(incentive), advance: round(advance),
           pf: round(pf), esi: round(esi), tds: round(tds),
           employer_pf: round(employer_pf), employer_esi: round(employer_esi),
           edli: round(edli), pf_admin_charges: round(pf_admin_charges),

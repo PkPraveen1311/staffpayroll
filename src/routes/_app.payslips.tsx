@@ -40,14 +40,34 @@ function PayslipsPage() {
   const run: any = runs.find((r: any) => r.id === effectiveRun);
 
   const saveIncentive = async (slip: any, incentive: number) => {
-    const net = Number(slip.gross) + incentive - Number(slip.total_deductions);
+    const advance = Number(slip.advance ?? 0);
+    const baseDed = Number(slip.total_deductions) - Number(slip.advance ?? 0);
+    const newTotalDed = baseDed + advance;
+    const net = Number(slip.gross) + incentive - newTotalDed;
     const { error } = await supabase.from("payslips").update({ incentive, net_pay: Math.round(net * 100) / 100 }).eq("id", slip.id);
     if (error) { toast.error(error.message); return; }
     toast.success("Incentive saved");
-    // refresh totals on the run
-    const { data: all } = await supabase.from("payslips").select("net_pay").eq("payroll_run_id", slip.payroll_run_id);
+    await refreshTotals(slip.payroll_run_id);
+  };
+
+  const saveAdvance = async (slip: any, advance: number) => {
+    const baseDed = Number(slip.total_deductions) - Number(slip.advance ?? 0);
+    const newTotalDed = baseDed + advance;
+    const net = Number(slip.gross) + Number(slip.incentive ?? 0) - newTotalDed;
+    const { error } = await supabase.from("payslips").update({
+      advance,
+      total_deductions: Math.round(newTotalDed * 100) / 100,
+      net_pay: Math.round(net * 100) / 100,
+    }).eq("id", slip.id);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Advance saved");
+    await refreshTotals(slip.payroll_run_id);
+  };
+
+  const refreshTotals = async (payrollRunId: string) => {
+    const { data: all } = await supabase.from("payslips").select("net_pay").eq("payroll_run_id", payrollRunId);
     const totalNet = (all ?? []).reduce((s: number, p: any) => s + Number(p.net_pay), 0);
-    await supabase.from("payroll_runs").update({ total_net: totalNet }).eq("id", slip.payroll_run_id);
+    await supabase.from("payroll_runs").update({ total_net: totalNet }).eq("id", payrollRunId);
     qc.invalidateQueries({ queryKey: ["payslips", effectiveRun] });
     qc.invalidateQueries({ queryKey: ["payroll_runs"] });
   };
@@ -79,19 +99,21 @@ function PayslipsPage() {
                 <TableHead>Employee</TableHead><TableHead className="text-right">Days</TableHead>
                 <TableHead className="text-right">Gross</TableHead>
                 <TableHead className="text-right w-40">Incentive</TableHead>
+                <TableHead className="text-right w-40">Advance</TableHead>
                 <TableHead className="text-right">Deductions</TableHead>
                 <TableHead className="text-right">Net pay</TableHead><TableHead className="text-right">Slip</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {slips.length === 0 ? (
-                <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">No payslips. Generate a payroll run first.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">No payslips. Generate a payroll run first.</TableCell></TableRow>
               ) : slips.map((s: any) => (
                 <TableRow key={s.id}>
                   <TableCell><div className="font-medium">{s.employees?.full_name}</div><div className="text-xs text-muted-foreground font-mono">{s.employees?.employee_code}</div></TableCell>
                   <TableCell className="text-right">{s.days_worked}</TableCell>
                   <TableCell className="text-right">{fmtINR(s.gross)}</TableCell>
-                  <TableCell className="text-right"><IncentiveCell slip={s} onSave={saveIncentive} /></TableCell>
+                  <TableCell className="text-right"><EditableNumCell key={`inc-${s.id}-${s.incentive}`} value={s.incentive} onSave={(n) => saveIncentive(s, n)} /></TableCell>
+                  <TableCell className="text-right"><EditableNumCell key={`adv-${s.id}-${s.advance}`} value={s.advance} onSave={(n) => saveAdvance(s, n)} /></TableCell>
                   <TableCell className="text-right">{fmtINR(s.total_deductions)}</TableCell>
                   <TableCell className="text-right font-semibold text-primary">{fmtINR(s.net_pay)}</TableCell>
                   <TableCell className="text-right">
@@ -107,9 +129,10 @@ function PayslipsPage() {
   );
 }
 
-function IncentiveCell({ slip, onSave }: { slip: any; onSave: (s: any, n: number) => void }) {
-  const [val, setVal] = useState<string>(String(slip.incentive ?? 0));
-  const dirty = Number(val || 0) !== Number(slip.incentive ?? 0);
+function EditableNumCell({ value, onSave }: { value: number | string | null | undefined; onSave: (n: number) => void }) {
+  const initial = String(value ?? 0);
+  const [val, setVal] = useState<string>(initial);
+  const dirty = Number(val || 0) !== Number(initial || 0);
   return (
     <div className="flex items-center justify-end gap-1">
       <Input
@@ -120,7 +143,7 @@ function IncentiveCell({ slip, onSave }: { slip: any; onSave: (s: any, n: number
         min={0}
       />
       {dirty && (
-        <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => onSave(slip, Number(val || 0))}>
+        <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => onSave(Number(val || 0))}>
           <Check className="h-4 w-4 text-primary" />
         </Button>
       )}
@@ -170,6 +193,7 @@ function SlipDialog({ slip, period }: { slip: any; period: string }) {
               <Row k="PF (12% of basic)" v={slip.pf} />
               <Row k="ESI" v={slip.esi} />
               <Row k="TDS" v={slip.tds} />
+              <Row k="Advance" v={slip.advance ?? 0} />
               <Row k="Total" v={slip.total_deductions} bold />
 
               <h4 className="text-xs uppercase tracking-wider text-muted-foreground mt-4 mb-2">Employer contributions</h4>
