@@ -99,19 +99,21 @@ function PayslipsPage() {
                 <TableHead>Employee</TableHead><TableHead className="text-right">Days</TableHead>
                 <TableHead className="text-right">Gross</TableHead>
                 <TableHead className="text-right w-40">Incentive</TableHead>
+                <TableHead className="text-right w-40">Advance</TableHead>
                 <TableHead className="text-right">Deductions</TableHead>
                 <TableHead className="text-right">Net pay</TableHead><TableHead className="text-right">Slip</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {slips.length === 0 ? (
-                <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">No payslips. Generate a payroll run first.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">No payslips. Generate a payroll run first.</TableCell></TableRow>
               ) : slips.map((s: any) => (
                 <TableRow key={s.id}>
                   <TableCell><div className="font-medium">{s.employees?.full_name}</div><div className="text-xs text-muted-foreground font-mono">{s.employees?.employee_code}</div></TableCell>
                   <TableCell className="text-right">{s.days_worked}</TableCell>
                   <TableCell className="text-right">{fmtINR(s.gross)}</TableCell>
-                  <TableCell className="text-right"><IncentiveCell slip={s} onSave={saveIncentive} /></TableCell>
+                  <TableCell className="text-right"><EditableNumCell key={`inc-${s.id}-${s.incentive}`} value={s.incentive} onSave={(n) => saveIncentive(s, n)} /></TableCell>
+                  <TableCell className="text-right"><EditableNumCell key={`adv-${s.id}-${s.advance}`} value={s.advance} onSave={(n) => saveAdvance(s, n)} /></TableCell>
                   <TableCell className="text-right">{fmtINR(s.total_deductions)}</TableCell>
                   <TableCell className="text-right font-semibold text-primary">{fmtINR(s.net_pay)}</TableCell>
                   <TableCell className="text-right">
