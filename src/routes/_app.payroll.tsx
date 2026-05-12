@@ -91,11 +91,11 @@ function PayrollPage() {
         const pf_admin_charges = e.pf_enabled ? pfWage * 0.005 : 0;
         const employer_esi = e.esi_enabled && basic <= 21000 ? basic * 0.0325 : 0;
 
-        // CTC carve-out: employer PF + EDLI + admin are part of structured CTC.
+        // CTC carve-out: employer PF + EDLI + admin + employer ESI are part of structured CTC.
         // Always reduce special allowance by carve-out so gross matches CTC
         // (same treatment as Praveen). Special may go negative for low-CTC
         // employees whose configured special allowance is smaller than carve-out.
-        const ctcCarveOut = employer_pf + edli + pf_admin_charges;
+        const ctcCarveOut = employer_pf + employer_esi + edli + pf_admin_charges;
         special = special - ctcCarveOut;
 
         const gross = basic + hra + allow + medical + leaveEnc + bonus + special;
