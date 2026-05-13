@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Eye, Printer, Check } from "lucide-react";
+import { Eye, Printer, Check, MessageCircle, Mail } from "lucide-react";
 import { fmtINR, monthName } from "@/lib/format";
 import { toast } from "sonner";
 
