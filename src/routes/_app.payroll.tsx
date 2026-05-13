@@ -48,7 +48,7 @@ function PayrollPage() {
       const dayMap = new Map<string, number>();
       attendance?.forEach((a: any) => {
         const cur = dayMap.get(a.employee_id) ?? 0;
-        const add = a.status === "present" || a.status === "week-off" ? 1 : a.status === "half-day" ? 0.5 : 0;
+        const add = a.status === "present" || a.status === "week-off" || a.status === "leave" ? 1 : a.status === "half-day" ? 0.5 : 0;
         dayMap.set(a.employee_id, cur + add);
       });
 
