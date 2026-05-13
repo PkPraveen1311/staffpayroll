@@ -30,7 +30,7 @@ function PayslipsPage() {
     queryKey: ["payslips", effectiveRun],
     queryFn: async () => {
       if (!effectiveRun) return [];
-      const { data, error } = await supabase.from("payslips").select("*, employees(full_name, employee_code, designation, department, pan, bank_account)").eq("payroll_run_id", effectiveRun);
+      const { data, error } = await supabase.from("payslips").select("*, employees(full_name, employee_code, designation, department, pan, bank_account, email, phone)").eq("payroll_run_id", effectiveRun);
       if (error) throw error;
       return data ?? [];
     },
