@@ -74,37 +74,35 @@ function PayrollPage() {
         const recordedDays = dayMap.get(e.id);
         const daysWorked = recordedDays === undefined ? daysInMonth : recordedDays;
         const ratio = daysWorked / daysInMonth;
-        const basic = Number(e.basic_salary) * ratio;
+        const fullBasic = Number(e.basic_salary);
+        const basic = fullBasic * ratio;
         const hra = Number(e.hra) * ratio;
         const allow = Number(e.allowances) * ratio;
         const medical = Number(e.medical_allowance ?? 0) * ratio;
         const leaveEnc = Number(e.leave_encashment ?? 0) * ratio;
         const bonus = Number(e.statutory_bonus ?? 0) * ratio;
-        let special = Number(e.special_allowance ?? 0) * ratio;
+        const special = Number(e.special_allowance ?? 0) * ratio;
         const incentive = incentiveMap.get(e.id) ?? 0;
         const advance = advanceMap.get(e.id) ?? 0;
 
-        // Employer contributions — included in CTC, computed on PF wage ceiling (₹15,000 basic)
-        const pfWage = Math.min(basic, 15000 * ratio);
+        // PF wage ceiling rule: if full basic > 15,000, PF stays on 15,000
+        // regardless of attendance (no proration on the cap). Otherwise PF
+        // wage is the prorated basic.
+        const pfWage = fullBasic > 15000 ? 15000 : basic;
+        // Employer PF = EPF (3.67%) + EPS (8.33%) = 12% of pfWage
         const employer_pf = e.pf_enabled ? pfWage * 0.12 : 0;
         const edli = e.pf_enabled ? pfWage * 0.005 : 0;
         const pf_admin_charges = e.pf_enabled ? pfWage * 0.005 : 0;
-        const employer_esi = e.esi_enabled && basic <= 21000 ? basic * 0.0325 : 0;
+        const employer_esi = e.esi_enabled ? basic * 0.0325 : 0;
 
-        // CTC carve-out: employer PF + EDLI + admin + employer ESI are part of structured CTC.
-        // Always reduce special allowance by carve-out so gross matches CTC
-        // (same treatment as Praveen). Special may go negative for low-CTC
-        // employees whose configured special allowance is smaller than carve-out.
-        const ctcCarveOut = employer_pf + employer_esi + edli + pf_admin_charges;
-        special = special - ctcCarveOut;
-
+        // Total earnings = sum of all components (no employer carve-out)
         const gross = basic + hra + allow + medical + leaveEnc + bonus + special;
 
         // Employee deductions
-        // PF: 12% of basic, capped at ₹1,800 (12% of ₹15,000 wage ceiling)
-        const pf = e.pf_enabled ? Math.min(basic * 0.12, 1800 * ratio) : 0;
-        // ESI: 0.75% of basic (new wage rule), eligibility checked on basic <= 21000
-        const esi = e.esi_enabled && basic <= 21000 ? basic * 0.0075 : 0;
+        // PF: 12% of pfWage — fixed ₹1,800 when basic > 15k, otherwise prorated
+        const pf = e.pf_enabled ? pfWage * 0.12 : 0;
+        // ESI: 0.75% of basic (employee)
+        const esi = e.esi_enabled ? basic * 0.0075 : 0;
         // TDS: only if explicitly enabled per employee
         let tds = 0;
         if (e.tds_enabled) {

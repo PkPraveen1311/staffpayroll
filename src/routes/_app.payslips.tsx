@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Eye, Printer, Check } from "lucide-react";
+import { Eye, Printer, Check, MessageCircle, Mail } from "lucide-react";
 import { fmtINR, monthName } from "@/lib/format";
 import { toast } from "sonner";
 
@@ -30,7 +30,7 @@ function PayslipsPage() {
     queryKey: ["payslips", effectiveRun],
     queryFn: async () => {
       if (!effectiveRun) return [];
-      const { data, error } = await supabase.from("payslips").select("*, employees(full_name, employee_code, designation, department, pan, bank_account)").eq("payroll_run_id", effectiveRun);
+      const { data, error } = await supabase.from("payslips").select("*, employees(full_name, employee_code, designation, department, pan, bank_account, email, phone)").eq("payroll_run_id", effectiveRun);
       if (error) throw error;
       return data ?? [];
     },
@@ -101,12 +101,14 @@ function PayslipsPage() {
                 <TableHead className="text-right w-40">Incentive</TableHead>
                 <TableHead className="text-right w-40">Advance</TableHead>
                 <TableHead className="text-right">Deductions</TableHead>
-                <TableHead className="text-right">Net pay</TableHead><TableHead className="text-right">Slip</TableHead>
+                <TableHead className="text-right">Net pay</TableHead>
+                <TableHead className="text-right">Slip</TableHead>
+                <TableHead className="text-right">Send</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {slips.length === 0 ? (
-                <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">No payslips. Generate a payroll run first.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">No payslips. Generate a payroll run first.</TableCell></TableRow>
               ) : slips.map((s: any) => (
                 <TableRow key={s.id}>
                   <TableCell><div className="font-medium">{s.employees?.full_name}</div><div className="text-xs text-muted-foreground font-mono">{s.employees?.employee_code}</div></TableCell>
@@ -118,6 +120,9 @@ function PayslipsPage() {
                   <TableCell className="text-right font-semibold text-primary">{fmtINR(s.net_pay)}</TableCell>
                   <TableCell className="text-right">
                     <SlipDialog slip={s} period={run ? `${monthName(run.month)} ${run.year}` : ""} />
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <SendActions slip={s} period={run ? `${monthName(run.month)} ${run.year}` : ""} />
                   </TableCell>
                 </TableRow>
               ))}
@@ -229,6 +234,66 @@ function Row({ k, v, bold }: { k: string; v: number; bold?: boolean }) {
   return (
     <div className={`flex justify-between py-1 ${bold ? "font-semibold border-t border-border/60 mt-1 pt-2" : ""}`}>
       <span className="text-muted-foreground">{k}</span><span>{fmtINR(v)}</span>
+    </div>
+  );
+}
+
+function buildPayslipText(slip: any, period: string) {
+  const name = slip.employees?.full_name ?? "";
+  const lines = [
+    `*PayPulse — Salary Slip*`,
+    `${period}`,
+    ``,
+    `Employee: ${name}`,
+    `Code: ${slip.employees?.employee_code ?? "—"}`,
+    `Days worked: ${slip.days_worked}`,
+    ``,
+    `*Earnings*`,
+    `Basic: ${fmtINR(slip.basic)}`,
+    `HRA: ${fmtINR(slip.hra)}`,
+    `Medical: ${fmtINR(slip.medical_allowance ?? 0)}`,
+    `Leave Enc.: ${fmtINR(slip.leave_encashment ?? 0)}`,
+    `Stat. Bonus: ${fmtINR(slip.statutory_bonus ?? 0)}`,
+    `Special Allow.: ${fmtINR(slip.special_allowance ?? 0)}`,
+    `Incentive: ${fmtINR(slip.incentive ?? 0)}`,
+    `Gross + Inc.: ${fmtINR(Number(slip.gross) + Number(slip.incentive ?? 0))}`,
+    ``,
+    `*Deductions*`,
+    `PF: ${fmtINR(slip.pf)}`,
+    `ESI: ${fmtINR(slip.esi)}`,
+    `TDS: ${fmtINR(slip.tds)}`,
+    `Advance: ${fmtINR(slip.advance ?? 0)}`,
+    `Total Ded.: ${fmtINR(slip.total_deductions)}`,
+    ``,
+    `*Net Pay: ${fmtINR(slip.net_pay)}*`,
+  ];
+  return lines.join("\n");
+}
+
+function SendActions({ slip, period }: { slip: any; period: string }) {
+  const text = buildPayslipText(slip, period);
+  const phone = String(slip.employees?.phone ?? "").replace(/\D/g, "");
+  const email = slip.employees?.email ?? "";
+
+  const sendWhatsApp = () => {
+    if (!phone) { toast.error("Employee phone number missing"); return; }
+    const num = phone.length === 10 ? `91${phone}` : phone;
+    window.open(`https://wa.me/${num}?text=${encodeURIComponent(text)}`, "_blank");
+  };
+  const sendEmail = () => {
+    if (!email) { toast.error("Employee email missing"); return; }
+    const subject = `Salary Slip — ${period}`;
+    window.location.href = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(text)}`;
+  };
+
+  return (
+    <div className="flex items-center justify-end gap-1">
+      <Button size="icon" variant="ghost" className="h-8 w-8" title="Send via WhatsApp" onClick={sendWhatsApp}>
+        <MessageCircle className="h-4 w-4 text-green-500" />
+      </Button>
+      <Button size="icon" variant="ghost" className="h-8 w-8" title="Send via Email" onClick={sendEmail}>
+        <Mail className="h-4 w-4 text-blue-400" />
+      </Button>
     </div>
   );
 }
