@@ -89,8 +89,8 @@ function PayrollPage() {
         // regardless of attendance (no proration on the cap). Otherwise PF
         // wage is the prorated basic.
         const pfWage = fullBasic > 15000 ? 15000 : basic;
-        const employer_pf = e.pf_enabled ? pfWage * 0.0367 : 0; // EPF 3.67%
-        const employer_eps = e.pf_enabled ? pfWage * 0.0833 : 0; // EPS 8.33%
+        // Employer PF = EPF (3.67%) + EPS (8.33%) = 12% of pfWage
+        const employer_pf = e.pf_enabled ? pfWage * 0.12 : 0;
         const edli = e.pf_enabled ? pfWage * 0.005 : 0;
         const pf_admin_charges = e.pf_enabled ? pfWage * 0.005 : 0;
         const employer_esi = e.esi_enabled ? basic * 0.0325 : 0;
