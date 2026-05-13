@@ -1,6 +1,6 @@
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import {
-  LayoutDashboard, Users, CalendarCheck, Plane, Wallet, FileText, Settings, LogOut,
+  LayoutDashboard, Users, CalendarCheck, Plane, Wallet, FileText, Receipt, Settings, LogOut,
 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
@@ -16,6 +16,7 @@ const items = [
   { title: "Leaves", url: "/leaves", icon: Plane },
   { title: "Payroll", url: "/payroll", icon: Wallet },
   { title: "Payslips", url: "/payslips", icon: FileText },
+  { title: "Challans", url: "/challans", icon: Receipt },
   { title: "Settings", url: "/settings", icon: Settings },
 ];
 
