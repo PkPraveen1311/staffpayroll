@@ -237,3 +237,63 @@ function Row({ k, v, bold }: { k: string; v: number; bold?: boolean }) {
     </div>
   );
 }
+
+function buildPayslipText(slip: any, period: string) {
+  const name = slip.employees?.full_name ?? "";
+  const lines = [
+    `*PayPulse — Salary Slip*`,
+    `${period}`,
+    ``,
+    `Employee: ${name}`,
+    `Code: ${slip.employees?.employee_code ?? "—"}`,
+    `Days worked: ${slip.days_worked}`,
+    ``,
+    `*Earnings*`,
+    `Basic: ${fmtINR(slip.basic)}`,
+    `HRA: ${fmtINR(slip.hra)}`,
+    `Medical: ${fmtINR(slip.medical_allowance ?? 0)}`,
+    `Leave Enc.: ${fmtINR(slip.leave_encashment ?? 0)}`,
+    `Stat. Bonus: ${fmtINR(slip.statutory_bonus ?? 0)}`,
+    `Special Allow.: ${fmtINR(slip.special_allowance ?? 0)}`,
+    `Incentive: ${fmtINR(slip.incentive ?? 0)}`,
+    `Gross + Inc.: ${fmtINR(Number(slip.gross) + Number(slip.incentive ?? 0))}`,
+    ``,
+    `*Deductions*`,
+    `PF: ${fmtINR(slip.pf)}`,
+    `ESI: ${fmtINR(slip.esi)}`,
+    `TDS: ${fmtINR(slip.tds)}`,
+    `Advance: ${fmtINR(slip.advance ?? 0)}`,
+    `Total Ded.: ${fmtINR(slip.total_deductions)}`,
+    ``,
+    `*Net Pay: ${fmtINR(slip.net_pay)}*`,
+  ];
+  return lines.join("\n");
+}
+
+function SendActions({ slip, period }: { slip: any; period: string }) {
+  const text = buildPayslipText(slip, period);
+  const phone = String(slip.employees?.phone ?? "").replace(/\D/g, "");
+  const email = slip.employees?.email ?? "";
+
+  const sendWhatsApp = () => {
+    if (!phone) { toast.error("Employee phone number missing"); return; }
+    const num = phone.length === 10 ? `91${phone}` : phone;
+    window.open(`https://wa.me/${num}?text=${encodeURIComponent(text)}`, "_blank");
+  };
+  const sendEmail = () => {
+    if (!email) { toast.error("Employee email missing"); return; }
+    const subject = `Salary Slip — ${period}`;
+    window.location.href = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(text)}`;
+  };
+
+  return (
+    <div className="flex items-center justify-end gap-1">
+      <Button size="icon" variant="ghost" className="h-8 w-8" title="Send via WhatsApp" onClick={sendWhatsApp}>
+        <MessageCircle className="h-4 w-4 text-green-500" />
+      </Button>
+      <Button size="icon" variant="ghost" className="h-8 w-8" title="Send via Email" onClick={sendEmail}>
+        <Mail className="h-4 w-4 text-blue-400" />
+      </Button>
+    </div>
+  );
+}
