@@ -101,12 +101,14 @@ function PayslipsPage() {
                 <TableHead className="text-right w-40">Incentive</TableHead>
                 <TableHead className="text-right w-40">Advance</TableHead>
                 <TableHead className="text-right">Deductions</TableHead>
-                <TableHead className="text-right">Net pay</TableHead><TableHead className="text-right">Slip</TableHead>
+                <TableHead className="text-right">Net pay</TableHead>
+                <TableHead className="text-right">Slip</TableHead>
+                <TableHead className="text-right">Send</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {slips.length === 0 ? (
-                <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">No payslips. Generate a payroll run first.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">No payslips. Generate a payroll run first.</TableCell></TableRow>
               ) : slips.map((s: any) => (
                 <TableRow key={s.id}>
                   <TableCell><div className="font-medium">{s.employees?.full_name}</div><div className="text-xs text-muted-foreground font-mono">{s.employees?.employee_code}</div></TableCell>
@@ -118,6 +120,9 @@ function PayslipsPage() {
                   <TableCell className="text-right font-semibold text-primary">{fmtINR(s.net_pay)}</TableCell>
                   <TableCell className="text-right">
                     <SlipDialog slip={s} period={run ? `${monthName(run.month)} ${run.year}` : ""} />
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <SendActions slip={s} period={run ? `${monthName(run.month)} ${run.year}` : ""} />
                   </TableCell>
                 </TableRow>
               ))}
