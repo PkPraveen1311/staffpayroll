@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as AppIndexRouteImport } from './routes/_app.index'
+import { Route as AppWeekOffsRouteImport } from './routes/_app.week-offs'
 import { Route as AppSettingsRouteImport } from './routes/_app.settings'
 import { Route as AppPayslipsRouteImport } from './routes/_app.payslips'
 import { Route as AppPayrollRouteImport } from './routes/_app.payroll'
@@ -33,6 +34,11 @@ const AppRoute = AppRouteImport.update({
 const AppIndexRoute = AppIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppWeekOffsRoute = AppWeekOffsRouteImport.update({
+  id: '/week-offs',
+  path: '/week-offs',
   getParentRoute: () => AppRoute,
 } as any)
 const AppSettingsRoute = AppSettingsRouteImport.update({
@@ -87,6 +93,7 @@ export interface FileRoutesByFullPath {
   '/payroll': typeof AppPayrollRoute
   '/payslips': typeof AppPayslipsRoute
   '/settings': typeof AppSettingsRoute
+  '/week-offs': typeof AppWeekOffsRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
@@ -98,6 +105,7 @@ export interface FileRoutesByTo {
   '/payroll': typeof AppPayrollRoute
   '/payslips': typeof AppPayslipsRoute
   '/settings': typeof AppSettingsRoute
+  '/week-offs': typeof AppWeekOffsRoute
   '/': typeof AppIndexRoute
 }
 export interface FileRoutesById {
@@ -112,6 +120,7 @@ export interface FileRoutesById {
   '/_app/payroll': typeof AppPayrollRoute
   '/_app/payslips': typeof AppPayslipsRoute
   '/_app/settings': typeof AppSettingsRoute
+  '/_app/week-offs': typeof AppWeekOffsRoute
   '/_app/': typeof AppIndexRoute
 }
 export interface FileRouteTypes {
@@ -127,6 +136,7 @@ export interface FileRouteTypes {
     | '/payroll'
     | '/payslips'
     | '/settings'
+    | '/week-offs'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/login'
@@ -138,6 +148,7 @@ export interface FileRouteTypes {
     | '/payroll'
     | '/payslips'
     | '/settings'
+    | '/week-offs'
     | '/'
   id:
     | '__root__'
@@ -151,6 +162,7 @@ export interface FileRouteTypes {
     | '/_app/payroll'
     | '/_app/payslips'
     | '/_app/settings'
+    | '/_app/week-offs'
     | '/_app/'
   fileRoutesById: FileRoutesById
 }
@@ -180,6 +192,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof AppIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/week-offs': {
+      id: '/_app/week-offs'
+      path: '/week-offs'
+      fullPath: '/week-offs'
+      preLoaderRoute: typeof AppWeekOffsRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/settings': {
@@ -250,6 +269,7 @@ interface AppRouteChildren {
   AppPayrollRoute: typeof AppPayrollRoute
   AppPayslipsRoute: typeof AppPayslipsRoute
   AppSettingsRoute: typeof AppSettingsRoute
+  AppWeekOffsRoute: typeof AppWeekOffsRoute
   AppIndexRoute: typeof AppIndexRoute
 }
 
@@ -262,6 +282,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppPayrollRoute: AppPayrollRoute,
   AppPayslipsRoute: AppPayslipsRoute,
   AppSettingsRoute: AppSettingsRoute,
+  AppWeekOffsRoute: AppWeekOffsRoute,
   AppIndexRoute: AppIndexRoute,
 }
 
@@ -274,3 +295,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
