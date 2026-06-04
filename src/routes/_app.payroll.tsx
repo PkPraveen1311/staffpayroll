@@ -45,11 +45,13 @@ function PayrollPage() {
         .gte("date", monthStart).lte("date", monthEnd);
       if (ae) throw ae;
 
-      const dayMap = new Map<string, number>();
+      // Formula: days_worked = monthDays - absent - (half-day / 2)
+      // Unmarked days count as present.
+      const deductMap = new Map<string, number>();
       attendance?.forEach((a: any) => {
-        const cur = dayMap.get(a.employee_id) ?? 0;
-        const add = a.status === "present" || a.status === "week-off" || a.status === "leave" ? 1 : a.status === "half-day" ? 0.5 : 0;
-        dayMap.set(a.employee_id, cur + add);
+        const cur = deductMap.get(a.employee_id) ?? 0;
+        const sub = a.status === "absent" ? 1 : a.status === "half-day" ? 0.5 : 0;
+        deductMap.set(a.employee_id, cur + sub);
       });
 
       const { data: existing } = await supabase.from("payroll_runs").select("*").eq("month", month).eq("year", year).maybeSingle();
