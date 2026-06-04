@@ -73,8 +73,7 @@ function PayrollPage() {
       }
 
       const slips = (employees ?? []).map((e: any) => {
-        const recordedDays = dayMap.get(e.id);
-        const daysWorked = recordedDays === undefined ? daysInMonth : recordedDays;
+        const daysWorked = Math.max(0, daysInMonth - (deductMap.get(e.id) ?? 0));
         const ratio = daysWorked / daysInMonth;
         const fullBasic = Number(e.basic_salary);
         const basic = fullBasic * ratio;
