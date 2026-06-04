@@ -85,7 +85,14 @@ function PayrollPage() {
         const c = countsMap.get(e.id) ?? { present: 0, weekOff: 0, half: 0 };
         const allowed = allowedMap.get(e.id) ?? 0;
         const countedWeekOff = Math.min(c.weekOff, allowed);
-        const daysWorked = Math.min(daysInMonth, c.present + countedWeekOff + c.half / 2);
+        // Unused allowed week-off credit can also "upgrade" half-days to full
+        // days (1 credit covers 2 half-days, i.e. adds 1 full day).
+        const remainingAllowed = allowed - countedWeekOff;
+        const halfDayCredit = Math.min(remainingAllowed, c.half / 2);
+        const daysWorked = Math.min(
+          daysInMonth,
+          c.present + countedWeekOff + c.half / 2 + halfDayCredit,
+        );
         const ratio = daysWorked / daysInMonth;
         const fullBasic = Number(e.basic_salary);
         const basic = fullBasic * ratio;
