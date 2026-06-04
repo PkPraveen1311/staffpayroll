@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      allowed_week_offs: {
+        Row: {
+          allowed: number
+          created_at: string
+          employee_id: string
+          id: string
+          month: number
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          allowed?: number
+          created_at?: string
+          employee_id: string
+          id?: string
+          month: number
+          updated_at?: string
+          year: number
+        }
+        Update: {
+          allowed?: number
+          created_at?: string
+          employee_id?: string
+          id?: string
+          month?: number
+          updated_at?: string
+          year?: number
+        }
+        Relationships: []
+      }
       attendance: {
         Row: {
           created_at: string

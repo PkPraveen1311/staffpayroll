@@ -45,13 +45,22 @@ function PayrollPage() {
         .gte("date", monthStart).lte("date", monthEnd);
       if (ae) throw ae;
 
-      // Formula: days_worked = monthDays - absent - (half-day / 2)
-      // Unmarked days count as present.
-      const deductMap = new Map<string, number>();
+      const { data: allowedRows } = await supabase
+        .from("allowed_week_offs").select("employee_id, allowed")
+        .eq("year", year).eq("month", month);
+      const allowedMap = new Map<string, number>(
+        (allowedRows ?? []).map((r: any) => [r.employee_id, Number(r.allowed ?? 0)])
+      );
+
+      // Formula: days_worked = present + min(week_off, allowed) + (half-day / 2)
+      type Counts = { present: number; weekOff: number; half: number };
+      const countsMap = new Map<string, Counts>();
       attendance?.forEach((a: any) => {
-        const cur = deductMap.get(a.employee_id) ?? 0;
-        const sub = a.status === "absent" ? 1 : a.status === "half-day" ? 0.5 : 0;
-        deductMap.set(a.employee_id, cur + sub);
+        const c = countsMap.get(a.employee_id) ?? { present: 0, weekOff: 0, half: 0 };
+        if (a.status === "present") c.present += 1;
+        else if (a.status === "week-off") c.weekOff += 1;
+        else if (a.status === "half-day") c.half += 1;
+        countsMap.set(a.employee_id, c);
       });
 
       const { data: existing } = await supabase.from("payroll_runs").select("*").eq("month", month).eq("year", year).maybeSingle();
@@ -73,7 +82,10 @@ function PayrollPage() {
       }
 
       const slips = (employees ?? []).map((e: any) => {
-        const daysWorked = Math.max(0, daysInMonth - (deductMap.get(e.id) ?? 0));
+        const c = countsMap.get(e.id) ?? { present: 0, weekOff: 0, half: 0 };
+        const allowed = allowedMap.get(e.id) ?? 0;
+        const countedWeekOff = Math.min(c.weekOff, allowed);
+        const daysWorked = Math.min(daysInMonth, c.present + countedWeekOff + c.half / 2);
         const ratio = daysWorked / daysInMonth;
         const fullBasic = Number(e.basic_salary);
         const basic = fullBasic * ratio;

@@ -1,6 +1,6 @@
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import {
-  LayoutDashboard, Users, CalendarCheck, CalendarDays, Plane, Wallet, FileText, Receipt, Settings, LogOut,
+  LayoutDashboard, Users, CalendarCheck, CalendarDays, CalendarOff, Plane, Wallet, FileText, Receipt, Settings, LogOut,
 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
@@ -14,6 +14,7 @@ const items = [
   { title: "Employees", url: "/employees", icon: Users },
   { title: "Attendance", url: "/attendance", icon: CalendarCheck },
   { title: "Attendance Sheet", url: "/attendance-sheet", icon: CalendarDays },
+  { title: "Allowed Week-Offs", url: "/week-offs", icon: CalendarOff },
   { title: "Leaves", url: "/leaves", icon: Plane },
   { title: "Payroll", url: "/payroll", icon: Wallet },
   { title: "Payslips", url: "/payslips", icon: FileText },
