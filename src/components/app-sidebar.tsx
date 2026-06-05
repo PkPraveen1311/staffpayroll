@@ -1,6 +1,6 @@
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import {
-  LayoutDashboard, Users, CalendarCheck, CalendarDays, CalendarOff, Plane, Wallet, FileText, Receipt, Settings, LogOut,
+  LayoutDashboard, Users, CalendarCheck, CalendarDays, CalendarOff, Plane, Wallet, FileText, Receipt, Plug, Settings, LogOut,
 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
