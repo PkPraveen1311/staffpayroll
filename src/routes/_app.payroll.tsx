@@ -1,5 +1,5 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { createFileRoute } from "@tanstack/react-router";
+import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,8 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { Play, FileText } from "lucide-react";
+import { Play, Printer } from "lucide-react";
 import { toast } from "sonner";
 import { fmtINR, monthName } from "@/lib/format";
 
@@ -25,10 +24,37 @@ function PayrollPage() {
   const [year, setYear] = useState(now.getFullYear());
   const [running, setRunning] = useState(false);
 
-  const { data: runs = [] } = useQuery({
-    queryKey: ["payroll_runs"],
-    queryFn: async () => (await supabase.from("payroll_runs").select("*").order("year", { ascending: false }).order("month", { ascending: false })).data ?? [],
+  const { data: run } = useQuery({
+    queryKey: ["payroll_run", month, year],
+    queryFn: async () =>
+      (await supabase.from("payroll_runs").select("*").eq("month", month).eq("year", year).maybeSingle()).data,
   });
+
+  const { data: slips = [] } = useQuery({
+    queryKey: ["payroll_register", run?.id],
+    queryFn: async () => {
+      if (!run?.id) return [];
+      const { data, error } = await supabase
+        .from("payslips")
+        .select("*, employees(full_name, employee_code, designation, department, pan, bank_account)")
+        .eq("payroll_run_id", run.id);
+      if (error) throw error;
+      return (data ?? []).sort((a: any, b: any) =>
+        String(a.employees?.employee_code ?? "").localeCompare(String(b.employees?.employee_code ?? "")),
+      );
+    },
+    enabled: !!run?.id,
+  });
+
+  const totals = useMemo(() => {
+    const sum = (k: string) => slips.reduce((s: number, p: any) => s + Number(p[k] ?? 0), 0);
+    return {
+      basic: sum("basic"), hra: sum("hra"), allowances: sum("allowances"),
+      gross: sum("gross"), incentive: sum("incentive"), advance: sum("advance"),
+      pf: sum("pf"), esi: sum("esi"), tds: sum("tds"),
+      total_deductions: sum("total_deductions"), net_pay: sum("net_pay"),
+    };
+  }, [slips]);
 
   const generate = async () => {
     setRunning(true);
@@ -49,10 +75,9 @@ function PayrollPage() {
         .from("allowed_week_offs").select("employee_id, allowed")
         .eq("year", year).eq("month", month);
       const allowedMap = new Map<string, number>(
-        (allowedRows ?? []).map((r: any) => [r.employee_id, Number(r.allowed ?? 0)])
+        (allowedRows ?? []).map((r: any) => [r.employee_id, Number(r.allowed ?? 0)]),
       );
 
-      // Formula: days_worked = present + min(week_off, allowed) + (half-day / 2)
       type Counts = { present: number; weekOff: number; half: number };
       const countsMap = new Map<string, Counts>();
       attendance?.forEach((a: any) => {
@@ -72,7 +97,6 @@ function PayrollPage() {
         if (re) throw re;
         runId = newRun.id;
       } else {
-        // preserve manually-entered incentives & advances across re-runs
         const { data: prev } = await supabase.from("payslips").select("employee_id, incentive, advance").eq("payroll_run_id", runId);
         prev?.forEach((p: any) => {
           incentiveMap.set(p.employee_id, Number(p.incentive ?? 0));
@@ -81,18 +105,13 @@ function PayrollPage() {
         await supabase.from("payslips").delete().eq("payroll_run_id", runId);
       }
 
-      const slips = (employees ?? []).map((e: any) => {
+      const slipRows = (employees ?? []).map((e: any) => {
         const c = countsMap.get(e.id) ?? { present: 0, weekOff: 0, half: 0 };
         const allowed = allowedMap.get(e.id) ?? 0;
         const countedWeekOff = Math.min(c.weekOff, allowed);
-        // Unused allowed week-off credit can also "upgrade" half-days to full
-        // days (1 credit covers 2 half-days, i.e. adds 1 full day).
         const remainingAllowed = allowed - countedWeekOff;
         const halfDayCredit = Math.min(remainingAllowed, c.half / 2);
-        const daysWorked = Math.min(
-          daysInMonth,
-          c.present + countedWeekOff + c.half / 2 + halfDayCredit,
-        );
+        const daysWorked = Math.min(daysInMonth, c.present + countedWeekOff + c.half / 2 + halfDayCredit);
         const ratio = daysWorked / daysInMonth;
         const fullBasic = Number(e.basic_salary);
         const basic = fullBasic * ratio;
@@ -105,25 +124,16 @@ function PayrollPage() {
         const incentive = incentiveMap.get(e.id) ?? 0;
         const advance = advanceMap.get(e.id) ?? 0;
 
-        // PF wage ceiling rule: if full basic > 15,000, PF stays on 15,000
-        // regardless of attendance (no proration on the cap). Otherwise PF
-        // wage is the prorated basic.
         const pfWage = fullBasic > 15000 ? 15000 : basic;
-        // Employer PF = EPF (3.67%) + EPS (8.33%) = 12% of pfWage
         const employer_pf = e.pf_enabled ? pfWage * 0.12 : 0;
         const edli = e.pf_enabled ? pfWage * 0.005 : 0;
         const pf_admin_charges = e.pf_enabled ? pfWage * 0.005 : 0;
         const employer_esi = e.esi_enabled ? basic * 0.0325 : 0;
 
-        // Total earnings = sum of all components (no employer carve-out)
         const gross = basic + hra + allow + medical + leaveEnc + bonus + special;
 
-        // Employee deductions
-        // PF: 12% of pfWage — fixed ₹1,800 when basic > 15k, otherwise prorated
         const pf = e.pf_enabled ? pfWage * 0.12 : 0;
-        // ESI: 0.75% of basic (employee)
         const esi = e.esi_enabled ? basic * 0.0075 : 0;
-        // TDS: only if explicitly enabled per employee
         let tds = 0;
         if (e.tds_enabled) {
           const annual = (gross + incentive) * 12;
@@ -150,13 +160,15 @@ function PayrollPage() {
         };
       });
 
-      if (slips.length) {
-        const { error: ie } = await supabase.from("payslips").insert(slips);
+      if (slipRows.length) {
+        const { error: ie } = await supabase.from("payslips").insert(slipRows);
         if (ie) throw ie;
       }
-      const totalNet = slips.reduce((s, p) => s + p.net_pay, 0);
+      const totalNet = slipRows.reduce((s, p) => s + p.net_pay, 0);
       await supabase.from("payroll_runs").update({ total_net: totalNet, status: "processed" }).eq("id", runId);
       toast.success(`Payroll generated for ${monthName(month)} ${year}`);
+      qc.invalidateQueries({ queryKey: ["payroll_run", month, year] });
+      qc.invalidateQueries({ queryKey: ["payroll_register"] });
       qc.invalidateQueries({ queryKey: ["payroll_runs"] });
       qc.invalidateQueries({ queryKey: ["dashboard-stats"] });
     } catch (e: any) {
@@ -168,58 +180,128 @@ function PayrollPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Payroll</h1>
-        <p className="text-sm text-muted-foreground">Generate monthly payroll runs based on attendance & salary structure.</p>
+      <style>{`
+        @media print {
+          @page { size: A4 landscape; margin: 10mm; }
+          body { background: white !important; }
+          .no-print { display: none !important; }
+          .print-area, .print-area * { color: #000 !important; }
+          .print-area { background: white !important; box-shadow: none !important; border: none !important; }
+          .print-area table { font-size: 10px; border-collapse: collapse; width: 100%; }
+          .print-area th, .print-area td { border: 1px solid #999 !important; padding: 4px 6px !important; }
+          .print-area thead { background: #f0f0f0 !important; }
+        }
+      `}</style>
+
+      <div className="no-print flex items-end justify-between flex-wrap gap-4">
+        <div>
+          <h1 className="text-3xl font-bold">Payroll Register</h1>
+          <p className="text-sm text-muted-foreground">Generate, review and print month-wise payroll for all employees.</p>
+        </div>
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="space-y-1.5">
+            <Label className="text-xs">Month</Label>
+            <Select value={String(month)} onValueChange={(v) => setMonth(Number(v))}>
+              <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
+              <SelectContent>{monthsList.map(m => <SelectItem key={m} value={String(m)}>{monthName(m)}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">Year</Label>
+            <Select value={String(year)} onValueChange={(v) => setYear(Number(v))}>
+              <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
+              <SelectContent>{yearsList.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
+          <Button onClick={generate} disabled={running} className="bg-gradient-primary text-primary-foreground">
+            <Play className="h-4 w-4 mr-1" /> {running ? "Processing…" : run ? "Re-run" : "Run payroll"}
+          </Button>
+          <Button onClick={() => window.print()} variant="outline" disabled={!slips.length}>
+            <Printer className="h-4 w-4 mr-1" /> Print
+          </Button>
+        </div>
       </div>
 
-      <Card className="bg-gradient-card border-border/60 shadow-elegant">
-        <CardHeader><CardTitle>Generate payroll run</CardTitle></CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap items-end gap-4">
-            <div className="space-y-1.5">
-              <Label className="text-xs">Month</Label>
-              <Select value={String(month)} onValueChange={(v) => setMonth(Number(v))}>
-                <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
-                <SelectContent>{monthsList.map(m => <SelectItem key={m} value={String(m)}>{monthName(m)}</SelectItem>)}</SelectContent>
-              </Select>
+      <Card className="bg-gradient-card border-border/60 shadow-elegant print-area">
+        <CardHeader>
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div>
+              <CardTitle className="text-xl">Payroll Register — {monthName(month)} {year}</CardTitle>
+              <div className="text-xs text-muted-foreground mt-1">
+                {slips.length} employee{slips.length === 1 ? "" : "s"} · Status: {run?.status ?? "not generated"}
+              </div>
             </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">Year</Label>
-              <Select value={String(year)} onValueChange={(v) => setYear(Number(v))}>
-                <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
-                <SelectContent>{yearsList.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}</SelectContent>
-              </Select>
+            <div className="text-right">
+              <div className="font-display text-lg font-bold text-gradient">PayPulse</div>
+              <div className="text-[10px] uppercase tracking-widest text-muted-foreground">HR & Payroll</div>
             </div>
-            <Button onClick={generate} disabled={running} className="bg-gradient-primary text-primary-foreground">
-              <Play className="h-4 w-4 mr-1" /> {running ? "Processing…" : "Run payroll"}
-            </Button>
           </div>
-        </CardContent>
-      </Card>
-
-      <Card className="bg-gradient-card border-border/60 shadow-elegant">
-        <CardHeader><CardTitle>History</CardTitle></CardHeader>
+        </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow><TableHead>Period</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Total net</TableHead><TableHead className="text-right">Action</TableHead></TableRow>
-            </TableHeader>
-            <TableBody>
-              {runs.length === 0 ? (
-                <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-8">No payroll runs yet.</TableCell></TableRow>
-              ) : runs.map((r: any) => (
-                <TableRow key={r.id}>
-                  <TableCell className="font-medium">{monthName(r.month)} {r.year}</TableCell>
-                  <TableCell><Badge variant={r.status === "processed" ? "default" : "secondary"}>{r.status}</Badge></TableCell>
-                  <TableCell className="text-right font-medium">{fmtINR(r.total_net)}</TableCell>
-                  <TableCell className="text-right">
-                    <Link to="/payslips"><Button size="sm" variant="ghost"><FileText className="h-4 w-4 mr-1" /> View payslips</Button></Link>
-                  </TableCell>
+          {!run ? (
+            <div className="text-center text-muted-foreground py-12">
+              No payroll run for {monthName(month)} {year}. Click <strong>Run payroll</strong> to generate.
+            </div>
+          ) : slips.length === 0 ? (
+            <div className="text-center text-muted-foreground py-12">No payslips found for this run.</div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Code</TableHead>
+                  <TableHead>Employee</TableHead>
+                  <TableHead>Designation</TableHead>
+                  <TableHead className="text-right">Days</TableHead>
+                  <TableHead className="text-right">Basic</TableHead>
+                  <TableHead className="text-right">HRA</TableHead>
+                  <TableHead className="text-right">Allow.</TableHead>
+                  <TableHead className="text-right">Gross</TableHead>
+                  <TableHead className="text-right">Incent.</TableHead>
+                  <TableHead className="text-right">PF</TableHead>
+                  <TableHead className="text-right">ESI</TableHead>
+                  <TableHead className="text-right">TDS</TableHead>
+                  <TableHead className="text-right">Adv.</TableHead>
+                  <TableHead className="text-right">Total Ded.</TableHead>
+                  <TableHead className="text-right">Net Pay</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {slips.map((s: any) => (
+                  <TableRow key={s.id}>
+                    <TableCell className="font-mono text-xs">{s.employees?.employee_code}</TableCell>
+                    <TableCell className="font-medium">{s.employees?.full_name}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground">{s.employees?.designation ?? "—"}</TableCell>
+                    <TableCell className="text-right">{s.days_worked}</TableCell>
+                    <TableCell className="text-right">{fmtINR(s.basic)}</TableCell>
+                    <TableCell className="text-right">{fmtINR(s.hra)}</TableCell>
+                    <TableCell className="text-right">{fmtINR(Number(s.allowances) + Number(s.medical_allowance ?? 0) + Number(s.special_allowance ?? 0) + Number(s.statutory_bonus ?? 0) + Number(s.leave_encashment ?? 0))}</TableCell>
+                    <TableCell className="text-right">{fmtINR(s.gross)}</TableCell>
+                    <TableCell className="text-right">{fmtINR(s.incentive ?? 0)}</TableCell>
+                    <TableCell className="text-right">{fmtINR(s.pf)}</TableCell>
+                    <TableCell className="text-right">{fmtINR(s.esi)}</TableCell>
+                    <TableCell className="text-right">{fmtINR(s.tds)}</TableCell>
+                    <TableCell className="text-right">{fmtINR(s.advance ?? 0)}</TableCell>
+                    <TableCell className="text-right">{fmtINR(s.total_deductions)}</TableCell>
+                    <TableCell className="text-right font-semibold text-primary">{fmtINR(s.net_pay)}</TableCell>
+                  </TableRow>
+                ))}
+                <TableRow className="font-semibold bg-muted/40">
+                  <TableCell colSpan={4}>Total</TableCell>
+                  <TableCell className="text-right">{fmtINR(totals.basic)}</TableCell>
+                  <TableCell className="text-right">{fmtINR(totals.hra)}</TableCell>
+                  <TableCell className="text-right">{fmtINR(totals.allowances)}</TableCell>
+                  <TableCell className="text-right">{fmtINR(totals.gross)}</TableCell>
+                  <TableCell className="text-right">{fmtINR(totals.incentive)}</TableCell>
+                  <TableCell className="text-right">{fmtINR(totals.pf)}</TableCell>
+                  <TableCell className="text-right">{fmtINR(totals.esi)}</TableCell>
+                  <TableCell className="text-right">{fmtINR(totals.tds)}</TableCell>
+                  <TableCell className="text-right">{fmtINR(totals.advance)}</TableCell>
+                  <TableCell className="text-right">{fmtINR(totals.total_deductions)}</TableCell>
+                  <TableCell className="text-right text-primary">{fmtINR(totals.net_pay)}</TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
     </div>
