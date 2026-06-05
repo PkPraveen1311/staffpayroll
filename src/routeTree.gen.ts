@@ -22,6 +22,7 @@ import { Route as AppEmployeesRouteImport } from './routes/_app.employees'
 import { Route as AppChallansRouteImport } from './routes/_app.challans'
 import { Route as AppAttendanceSheetRouteImport } from './routes/_app.attendance-sheet'
 import { Route as AppAttendanceRouteImport } from './routes/_app.attendance'
+import { Route as AppIntegrationsRouteImport } from './routes/_app.integrations'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
