@@ -19,6 +19,7 @@ const items = [
   { title: "Payroll", url: "/payroll", icon: Wallet },
   { title: "Payslips", url: "/payslips", icon: FileText },
   { title: "Challans", url: "/challans", icon: Receipt },
+  { title: "Integrations", url: "/integrations", icon: Plug },
   { title: "Settings", url: "/settings", icon: Settings },
 ];
 
