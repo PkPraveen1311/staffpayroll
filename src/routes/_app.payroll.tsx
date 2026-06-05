@@ -183,13 +183,14 @@ function PayrollPage() {
       <style>{`
         @media print {
           @page { size: A4 landscape; margin: 10mm; }
-          body { background: white !important; }
-          .no-print { display: none !important; }
-          .print-area, .print-area * { color: #000 !important; }
-          .print-area { background: white !important; box-shadow: none !important; border: none !important; }
+          html, body { background: white !important; }
+          body * { visibility: hidden !important; }
+          .print-area, .print-area * { visibility: visible !important; color: #000 !important; }
+          .print-area { position: absolute !important; left: 0; top: 0; width: 100%; background: white !important; box-shadow: none !important; border: none !important; }
           .print-area table { font-size: 10px; border-collapse: collapse; width: 100%; }
           .print-area th, .print-area td { border: 1px solid #999 !important; padding: 4px 6px !important; }
           .print-area thead { background: #f0f0f0 !important; }
+          .no-print { display: none !important; }
         }
       `}</style>
 
