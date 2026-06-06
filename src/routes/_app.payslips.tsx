@@ -222,7 +222,7 @@ function SlipDialog({ slip, period }: { slip: any; period: string }) {
             </div>
           </div>
         </div>
-        <div className="flex justify-end pt-2">
+        <div className="flex justify-end pt-2 no-print">
           <Button onClick={() => window.print()} variant="outline"><Printer className="h-4 w-4 mr-1" /> Print</Button>
         </div>
       </DialogContent>
