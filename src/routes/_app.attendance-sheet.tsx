@@ -76,6 +76,23 @@ function AttendanceSheetPage() {
     },
   });
 
+  const { data: allowedRows = [] } = useQuery({
+    queryKey: ["allowed-week-offs-sheet", year, month],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("allowed_week_offs")
+        .select("employee_id, allowed")
+        .eq("year", year).eq("month", month);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const allowedMap = useMemo(
+    () => new Map<string, number>(allowedRows.map((r: any) => [r.employee_id, Number(r.allowed ?? 0)])),
+    [allowedRows],
+  );
+
   const matrix = useMemo(() => {
     const m = new Map<string, Map<string, StatusKey>>();
     for (const r of attendance) {
@@ -93,20 +110,27 @@ function AttendanceSheetPage() {
     return employees.map((e) => {
       const inner = matrix.get(e.id);
       const counts = { P: 0, A: 0, H: 0, L: 0, W: 0 };
-      let net = 0;
       for (const d of days) {
         const ds = `${year}-${pad(month)}-${pad(d)}`;
         const s = inner?.get(ds);
         if (!s) continue;
-        if (s === "present") { counts.P++; net += 1; }
+        if (s === "present") counts.P++;
         else if (s === "absent") counts.A++;
-        else if (s === "half-day") { counts.H++; net += 0.5; }
-        else if (s === "leave") { counts.L++; net += 1; }
-        else if (s === "week-off") { counts.W++; net += 1; }
+        else if (s === "half-day") counts.H++;
+        else if (s === "leave") counts.L++;
+        else if (s === "week-off") counts.W++;
       }
+      const allowed = allowedMap.get(e.id) ?? 0;
+      const countedWeekOff = Math.min(counts.W, allowed);
+      const remainingAllowed = allowed - countedWeekOff;
+      const halfDayCredit = Math.min(remainingAllowed, counts.H / 2);
+      const net = Math.min(
+        daysInMonth,
+        counts.P + counts.L + countedWeekOff + counts.H / 2 + halfDayCredit,
+      );
       return { emp: e, counts, net };
     });
-  }, [employees, matrix, days, month, year]);
+  }, [employees, matrix, days, month, year, allowedMap, daysInMonth]);
 
   const isSunday = (d: number) => new Date(year, month - 1, d).getDay() === 0;
 
