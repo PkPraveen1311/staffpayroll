@@ -167,7 +167,7 @@ function SlipDialog({ slip, period }: { slip: any; period: string }) {
       </DialogTrigger>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader><DialogTitle>Payslip — {period}</DialogTitle></DialogHeader>
-        <div className="space-y-4 text-sm">
+        <div className="space-y-4 text-sm print-area">
           <div className="flex items-center justify-between border-b border-border/60 pb-3">
             <div>
               <div className="font-display text-xl font-bold text-gradient">PayPulse</div>
