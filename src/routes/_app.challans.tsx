@@ -75,7 +75,7 @@ function ChallansPage() {
 
   return (
     <div className="space-y-6 print:space-y-3">
-      <div className="flex items-end justify-between flex-wrap gap-4 print:hidden">
+      <div className="flex items-end justify-between flex-wrap gap-4 no-print print:hidden">
         <div>
           <h1 className="text-3xl font-bold">Challans</h1>
           <p className="text-sm text-muted-foreground">PF (EPFO) & ESI statutory challan summaries.</p>
