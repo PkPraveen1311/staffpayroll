@@ -94,6 +94,7 @@ function ChallansPage() {
         </div>
       </div>
 
+      <div className="print-area space-y-6">
       <Card className="bg-gradient-card border-border/60 shadow-elegant">
         <CardHeader>
           <CardTitle>PF (EPFO) Challan — {run ? `${monthName(run.month)} ${run.year}` : "—"}</CardTitle>
