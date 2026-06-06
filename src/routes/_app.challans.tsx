@@ -185,6 +185,7 @@ function ChallansPage() {
           </Table>
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 }
