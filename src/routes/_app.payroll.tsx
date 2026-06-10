@@ -125,16 +125,6 @@ function PayrollPage() {
         const incentive = incentiveMap.get(e.id) ?? 0;
         const advance = advanceMap.get(e.id) ?? 0;
 
-        // Age >= 58: EPS = 0, full employer 12% goes to EPF
-        const ageOn = (() => {
-          if (!e.date_of_birth) return 0;
-          const d = new Date(e.date_of_birth);
-          const ref = new Date(year, month - 1, 1);
-          let a = ref.getFullYear() - d.getFullYear();
-          const md = ref.getMonth() - d.getMonth();
-          if (md < 0 || (md === 0 && ref.getDate() < d.getDate())) a--;
-          return a;
-        })();
         const pfWage = fullBasic > 15000 ? 15000 : basic;
         const employer_pf = e.pf_enabled ? pfWage * 0.12 : 0;
         const edli = e.pf_enabled ? pfWage * 0.005 : 0;
