@@ -88,75 +88,93 @@ export type Database = {
           bank_account: string | null
           basic_salary: number
           created_at: string
+          date_of_birth: string | null
           department: string | null
           designation: string | null
           email: string
           employee_code: string
           esi_enabled: boolean
+          esi_number: string | null
           full_name: string
           hra: number
           id: string
+          ifsc_code: string | null
           joining_date: string
           leave_encashment: number
           medical_allowance: number
           pan: string | null
           pf_enabled: boolean
+          pf_number: string | null
           phone: string | null
           special_allowance: number
           status: string
           statutory_bonus: number
           tds_enabled: boolean
+          uan: string | null
           updated_at: string
+          wedding_anniversary: string | null
         }
         Insert: {
           allowances?: number
           bank_account?: string | null
           basic_salary?: number
           created_at?: string
+          date_of_birth?: string | null
           department?: string | null
           designation?: string | null
           email: string
           employee_code: string
           esi_enabled?: boolean
+          esi_number?: string | null
           full_name: string
           hra?: number
           id?: string
+          ifsc_code?: string | null
           joining_date?: string
           leave_encashment?: number
           medical_allowance?: number
           pan?: string | null
           pf_enabled?: boolean
+          pf_number?: string | null
           phone?: string | null
           special_allowance?: number
           status?: string
           statutory_bonus?: number
           tds_enabled?: boolean
+          uan?: string | null
           updated_at?: string
+          wedding_anniversary?: string | null
         }
         Update: {
           allowances?: number
           bank_account?: string | null
           basic_salary?: number
           created_at?: string
+          date_of_birth?: string | null
           department?: string | null
           designation?: string | null
           email?: string
           employee_code?: string
           esi_enabled?: boolean
+          esi_number?: string | null
           full_name?: string
           hra?: number
           id?: string
+          ifsc_code?: string | null
           joining_date?: string
           leave_encashment?: number
           medical_allowance?: number
           pan?: string | null
           pf_enabled?: boolean
+          pf_number?: string | null
           phone?: string | null
           special_allowance?: number
           status?: string
           statutory_bonus?: number
           tds_enabled?: boolean
+          uan?: string | null
           updated_at?: string
+          wedding_anniversary?: string | null
         }
         Relationships: []
       }
