@@ -8,7 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { fmtINR, monthName } from "@/lib/format";
-import { Printer } from "lucide-react";
+import { Printer, FileSpreadsheet } from "lucide-react";
+import { exportToXlsx } from "@/lib/xlsx-export";
 
 export const Route = createFileRoute("/_app/challans")({ component: ChallansPage });
 
@@ -27,7 +28,7 @@ function ChallansPage() {
       if (!effectiveRun) return [];
       const { data } = await supabase
         .from("payslips")
-        .select("*, employees(full_name, employee_code, basic_salary, pf_enabled, esi_enabled)")
+        .select("*, employees(full_name, employee_code, basic_salary, pf_enabled, esi_enabled, date_of_birth, pf_number, esi_number, uan)")
         .eq("payroll_run_id", effectiveRun);
       return data ?? [];
     },
@@ -36,19 +37,32 @@ function ChallansPage() {
 
   const run: any = runs.find((r: any) => r.id === effectiveRun);
 
-  // PF challan: split employer 12% into EPS (8.33% of pf_wage capped 15k) and EPF (3.67%)
+  const ageOn = (dob?: string | null) => {
+    if (!dob || !run) return 0;
+    const d = new Date(dob);
+    const ref = new Date(run.year, run.month - 1, 1);
+    let a = ref.getFullYear() - d.getFullYear();
+    const md = ref.getMonth() - d.getMonth();
+    if (md < 0 || (md === 0 && ref.getDate() < d.getDate())) a--;
+    return a;
+  };
+
+  // PF challan: age >= 58 → EPS = 0, EPF = full employer 12%
   const pfRows = slips
     .filter((s: any) => s.employees?.pf_enabled && Number(s.pf) > 0)
     .map((s: any) => {
       const fullBasic = Number(s.employees?.basic_salary ?? 0);
-      // recover pf_wage from employer_pf (= 12% of pfWage)
       const pfWage = Number(s.employer_pf) > 0 ? Number(s.employer_pf) / 0.12 : (fullBasic > 15000 ? 15000 : Number(s.basic));
-      const eps = Math.min(pfWage, 15000) * 0.0833;
+      const age = ageOn(s.employees?.date_of_birth);
+      const eps = age >= 58 ? 0 : Math.min(pfWage, 15000) * 0.0833;
       const epf = Number(s.employer_pf) - eps;
       return {
         id: s.id,
         name: s.employees?.full_name,
         code: s.employees?.employee_code,
+        uan: s.employees?.uan ?? "",
+        pf_no: s.employees?.pf_number ?? "",
+        age,
         pf_wage: pfWage,
         ee: Number(s.pf),
         eps,
@@ -65,6 +79,7 @@ function ChallansPage() {
       id: s.id,
       name: s.employees?.full_name,
       code: s.employees?.employee_code,
+      esi_no: s.employees?.esi_number ?? "",
       wage: Number(s.basic),
       ee: Number(s.esi),
       er: Number(s.employer_esi),
@@ -73,6 +88,17 @@ function ChallansPage() {
 
   const sum = (arr: any[], k: string) => arr.reduce((a, b) => a + Number(b[k] ?? 0), 0);
 
+  const exportPF = () => exportToXlsx(`PF_Challan_${run ? monthName(run.month) + "_" + run.year : ""}.xlsx`, pfRows.map(r => ({
+    Code: r.code, Employee: r.name, UAN: r.uan, "PF No.": r.pf_no, Age: r.age,
+    "PF Wage": r.pf_wage, "EE 12%": r.ee, "EPS 8.33%": r.eps, "EPF 3.67%": r.epf,
+    "EDLI 0.5%": r.edli, "Admin 0.5%": r.admin, Total: r.total,
+  })), "PF");
+
+  const exportESI = () => exportToXlsx(`ESI_Challan_${run ? monthName(run.month) + "_" + run.year : ""}.xlsx`, esiRows.map(r => ({
+    Code: r.code, Employee: r.name, "ESI No.": r.esi_no, "ESI Wage": r.wage,
+    "EE 0.75%": r.ee, "ER 3.25%": r.er, Total: r.total,
+  })), "ESI");
+
   return (
     <div className="space-y-6 print:space-y-3">
       <div className="flex items-end justify-between flex-wrap gap-4 no-print print:hidden">
@@ -80,7 +106,7 @@ function ChallansPage() {
           <h1 className="text-3xl font-bold">Challans</h1>
           <p className="text-sm text-muted-foreground">PF (EPFO) & ESI statutory challan summaries.</p>
         </div>
-        <div className="flex items-end gap-3">
+        <div className="flex items-end gap-3 flex-wrap">
           <div className="space-y-1.5">
             <Label className="text-xs">Payroll run</Label>
             <Select value={effectiveRun} onValueChange={setRunId}>
@@ -90,6 +116,8 @@ function ChallansPage() {
               </SelectContent>
             </Select>
           </div>
+          <Button onClick={exportPF} variant="outline" disabled={!pfRows.length}><FileSpreadsheet className="h-4 w-4 mr-1" />PF Excel</Button>
+          <Button onClick={exportESI} variant="outline" disabled={!esiRows.length}><FileSpreadsheet className="h-4 w-4 mr-1" />ESI Excel</Button>
           <Button onClick={() => window.print()} variant="outline"><Printer className="h-4 w-4 mr-1" />Print</Button>
         </div>
       </div>
@@ -104,6 +132,8 @@ function ChallansPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Employee</TableHead>
+                <TableHead>UAN / PF No.</TableHead>
+                <TableHead className="text-right">Age</TableHead>
                 <TableHead className="text-right">PF Wage</TableHead>
                 <TableHead className="text-right">EE 12%</TableHead>
                 <TableHead className="text-right">EPS 8.33%</TableHead>
@@ -115,10 +145,15 @@ function ChallansPage() {
             </TableHeader>
             <TableBody>
               {pfRows.length === 0 ? (
-                <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-6">No PF-eligible employees.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground py-6">No PF-eligible employees.</TableCell></TableRow>
               ) : pfRows.map((r) => (
                 <TableRow key={r.id}>
                   <TableCell><div className="font-medium">{r.name}</div><div className="text-xs text-muted-foreground font-mono">{r.code}</div></TableCell>
+                  <TableCell className="font-mono text-xs">
+                    <div>{r.uan || "—"}</div>
+                    <div className="text-muted-foreground">{r.pf_no || "—"}</div>
+                  </TableCell>
+                  <TableCell className="text-right">{r.age || "—"}</TableCell>
                   <TableCell className="text-right">{fmtINR(r.pf_wage)}</TableCell>
                   <TableCell className="text-right">{fmtINR(r.ee)}</TableCell>
                   <TableCell className="text-right">{fmtINR(r.eps)}</TableCell>
@@ -130,7 +165,7 @@ function ChallansPage() {
               ))}
               {pfRows.length > 0 && (
                 <TableRow className="border-t-2 border-border bg-muted/40">
-                  <TableCell className="font-bold">TOTAL</TableCell>
+                  <TableCell className="font-bold" colSpan={3}>TOTAL</TableCell>
                   <TableCell className="text-right font-bold">{fmtINR(sum(pfRows, "pf_wage"))}</TableCell>
                   <TableCell className="text-right font-bold">{fmtINR(sum(pfRows, "ee"))}</TableCell>
                   <TableCell className="text-right font-bold">{fmtINR(sum(pfRows, "eps"))}</TableCell>
@@ -154,6 +189,7 @@ function ChallansPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Employee</TableHead>
+                <TableHead>ESI No.</TableHead>
                 <TableHead className="text-right">ESI Wage (Basic)</TableHead>
                 <TableHead className="text-right">EE 0.75%</TableHead>
                 <TableHead className="text-right">ER 3.25%</TableHead>
@@ -162,10 +198,11 @@ function ChallansPage() {
             </TableHeader>
             <TableBody>
               {esiRows.length === 0 ? (
-                <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-6">No ESI-eligible employees.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-6">No ESI-eligible employees.</TableCell></TableRow>
               ) : esiRows.map((r) => (
                 <TableRow key={r.id}>
                   <TableCell><div className="font-medium">{r.name}</div><div className="text-xs text-muted-foreground font-mono">{r.code}</div></TableCell>
+                  <TableCell className="font-mono text-xs">{r.esi_no || "—"}</TableCell>
                   <TableCell className="text-right">{fmtINR(r.wage)}</TableCell>
                   <TableCell className="text-right">{fmtINR(r.ee)}</TableCell>
                   <TableCell className="text-right">{fmtINR(r.er)}</TableCell>
@@ -174,7 +211,7 @@ function ChallansPage() {
               ))}
               {esiRows.length > 0 && (
                 <TableRow className="border-t-2 border-border bg-muted/40">
-                  <TableCell className="font-bold">TOTAL</TableCell>
+                  <TableCell className="font-bold" colSpan={2}>TOTAL</TableCell>
                   <TableCell className="text-right font-bold">{fmtINR(sum(esiRows, "wage"))}</TableCell>
                   <TableCell className="text-right font-bold">{fmtINR(sum(esiRows, "ee"))}</TableCell>
                   <TableCell className="text-right font-bold">{fmtINR(sum(esiRows, "er"))}</TableCell>

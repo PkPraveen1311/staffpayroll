@@ -7,9 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Play, Printer } from "lucide-react";
+import { Play, Printer, FileSpreadsheet } from "lucide-react";
 import { toast } from "sonner";
 import { fmtINR, monthName } from "@/lib/format";
+import { exportToXlsx } from "@/lib/xlsx-export";
 
 export const Route = createFileRoute("/_app/payroll")({ component: PayrollPage });
 
@@ -128,12 +129,12 @@ function PayrollPage() {
         const employer_pf = e.pf_enabled ? pfWage * 0.12 : 0;
         const edli = e.pf_enabled ? pfWage * 0.005 : 0;
         const pf_admin_charges = e.pf_enabled ? pfWage * 0.005 : 0;
-        const employer_esi = e.esi_enabled ? basic * 0.0325 : 0;
+        const employer_esi = e.esi_enabled ? Math.round(basic * 0.0325) : 0;
 
         const gross = basic + hra + allow + medical + leaveEnc + bonus + special;
 
         const pf = e.pf_enabled ? pfWage * 0.12 : 0;
-        const esi = e.esi_enabled ? basic * 0.0075 : 0;
+        const esi = e.esi_enabled ? Math.round(basic * 0.0075) : 0;
         let tds = 0;
         if (e.tds_enabled) {
           const annual = (gross + incentive) * 12;
@@ -219,6 +220,31 @@ function PayrollPage() {
           </Button>
           <Button onClick={() => window.print()} variant="outline" disabled={!slips.length}>
             <Printer className="h-4 w-4 mr-1" /> Print
+          </Button>
+          <Button
+            onClick={() => {
+              const rows = slips.map((s: any) => ({
+                Code: s.employees?.employee_code,
+                Name: s.employees?.full_name,
+                Designation: s.employees?.designation ?? "",
+                Department: s.employees?.department ?? "",
+                Days: s.days_worked,
+                Basic: Number(s.basic), HRA: Number(s.hra),
+                Allowances: Number(s.allowances), Medical: Number(s.medical_allowance),
+                "Leave Enc": Number(s.leave_encashment), Bonus: Number(s.statutory_bonus),
+                Special: Number(s.special_allowance),
+                Gross: Number(s.gross), Incentive: Number(s.incentive),
+                PF: Number(s.pf), ESI: Number(s.esi), TDS: Number(s.tds), Advance: Number(s.advance),
+                "Employer PF": Number(s.employer_pf), "Employer ESI": Number(s.employer_esi),
+                EDLI: Number(s.edli), "PF Admin": Number(s.pf_admin_charges),
+                "Total Deductions": Number(s.total_deductions),
+                "Net Pay": Number(s.net_pay),
+                PAN: s.employees?.pan ?? "", "Bank A/C": s.employees?.bank_account ?? "",
+              }));
+              exportToXlsx(`Payroll_Register_${monthName(month)}_${year}.xlsx`, rows, "Register");
+            }}
+            variant="outline" disabled={!slips.length}>
+            <FileSpreadsheet className="h-4 w-4 mr-1" /> Excel
           </Button>
         </div>
       </div>
