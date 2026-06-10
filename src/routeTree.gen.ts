@@ -20,6 +20,7 @@ import { Route as AppLeavesRouteImport } from './routes/_app.leaves'
 import { Route as AppIntegrationsRouteImport } from './routes/_app.integrations'
 import { Route as AppEmployeesRouteImport } from './routes/_app.employees'
 import { Route as AppChallansRouteImport } from './routes/_app.challans'
+import { Route as AppCelebrationsRouteImport } from './routes/_app.celebrations'
 import { Route as AppAttendanceSheetRouteImport } from './routes/_app.attendance-sheet'
 import { Route as AppAttendanceRouteImport } from './routes/_app.attendance'
 
@@ -77,6 +78,11 @@ const AppChallansRoute = AppChallansRouteImport.update({
   path: '/challans',
   getParentRoute: () => AppRoute,
 } as any)
+const AppCelebrationsRoute = AppCelebrationsRouteImport.update({
+  id: '/celebrations',
+  path: '/celebrations',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppAttendanceSheetRoute = AppAttendanceSheetRouteImport.update({
   id: '/attendance-sheet',
   path: '/attendance-sheet',
@@ -93,6 +99,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/attendance': typeof AppAttendanceRoute
   '/attendance-sheet': typeof AppAttendanceSheetRoute
+  '/celebrations': typeof AppCelebrationsRoute
   '/challans': typeof AppChallansRoute
   '/employees': typeof AppEmployeesRoute
   '/integrations': typeof AppIntegrationsRoute
@@ -106,6 +113,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/attendance': typeof AppAttendanceRoute
   '/attendance-sheet': typeof AppAttendanceSheetRoute
+  '/celebrations': typeof AppCelebrationsRoute
   '/challans': typeof AppChallansRoute
   '/employees': typeof AppEmployeesRoute
   '/integrations': typeof AppIntegrationsRoute
@@ -122,6 +130,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/_app/attendance': typeof AppAttendanceRoute
   '/_app/attendance-sheet': typeof AppAttendanceSheetRoute
+  '/_app/celebrations': typeof AppCelebrationsRoute
   '/_app/challans': typeof AppChallansRoute
   '/_app/employees': typeof AppEmployeesRoute
   '/_app/integrations': typeof AppIntegrationsRoute
@@ -139,6 +148,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/attendance'
     | '/attendance-sheet'
+    | '/celebrations'
     | '/challans'
     | '/employees'
     | '/integrations'
@@ -152,6 +162,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/attendance'
     | '/attendance-sheet'
+    | '/celebrations'
     | '/challans'
     | '/employees'
     | '/integrations'
@@ -167,6 +178,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/_app/attendance'
     | '/_app/attendance-sheet'
+    | '/_app/celebrations'
     | '/_app/challans'
     | '/_app/employees'
     | '/_app/integrations'
@@ -262,6 +274,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppChallansRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/celebrations': {
+      id: '/_app/celebrations'
+      path: '/celebrations'
+      fullPath: '/celebrations'
+      preLoaderRoute: typeof AppCelebrationsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/attendance-sheet': {
       id: '/_app/attendance-sheet'
       path: '/attendance-sheet'
@@ -282,6 +301,7 @@ declare module '@tanstack/react-router' {
 interface AppRouteChildren {
   AppAttendanceRoute: typeof AppAttendanceRoute
   AppAttendanceSheetRoute: typeof AppAttendanceSheetRoute
+  AppCelebrationsRoute: typeof AppCelebrationsRoute
   AppChallansRoute: typeof AppChallansRoute
   AppEmployeesRoute: typeof AppEmployeesRoute
   AppIntegrationsRoute: typeof AppIntegrationsRoute
@@ -296,6 +316,7 @@ interface AppRouteChildren {
 const AppRouteChildren: AppRouteChildren = {
   AppAttendanceRoute: AppAttendanceRoute,
   AppAttendanceSheetRoute: AppAttendanceSheetRoute,
+  AppCelebrationsRoute: AppCelebrationsRoute,
   AppChallansRoute: AppChallansRoute,
   AppEmployeesRoute: AppEmployeesRoute,
   AppIntegrationsRoute: AppIntegrationsRoute,
@@ -316,3 +337,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
