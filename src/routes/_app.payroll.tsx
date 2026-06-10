@@ -7,9 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Play, Printer } from "lucide-react";
+import { Play, Printer, FileSpreadsheet } from "lucide-react";
 import { toast } from "sonner";
 import { fmtINR, monthName } from "@/lib/format";
+import { exportToXlsx } from "@/lib/xlsx-export";
 
 export const Route = createFileRoute("/_app/payroll")({ component: PayrollPage });
 
@@ -124,16 +125,26 @@ function PayrollPage() {
         const incentive = incentiveMap.get(e.id) ?? 0;
         const advance = advanceMap.get(e.id) ?? 0;
 
+        // Age >= 58: EPS = 0, full employer 12% goes to EPF
+        const ageOn = (() => {
+          if (!e.date_of_birth) return 0;
+          const d = new Date(e.date_of_birth);
+          const ref = new Date(year, month - 1, 1);
+          let a = ref.getFullYear() - d.getFullYear();
+          const md = ref.getMonth() - d.getMonth();
+          if (md < 0 || (md === 0 && ref.getDate() < d.getDate())) a--;
+          return a;
+        })();
         const pfWage = fullBasic > 15000 ? 15000 : basic;
         const employer_pf = e.pf_enabled ? pfWage * 0.12 : 0;
         const edli = e.pf_enabled ? pfWage * 0.005 : 0;
         const pf_admin_charges = e.pf_enabled ? pfWage * 0.005 : 0;
-        const employer_esi = e.esi_enabled ? basic * 0.0325 : 0;
+        const employer_esi = e.esi_enabled ? Math.round(basic * 0.0325) : 0;
 
         const gross = basic + hra + allow + medical + leaveEnc + bonus + special;
 
         const pf = e.pf_enabled ? pfWage * 0.12 : 0;
-        const esi = e.esi_enabled ? basic * 0.0075 : 0;
+        const esi = e.esi_enabled ? Math.round(basic * 0.0075) : 0;
         let tds = 0;
         if (e.tds_enabled) {
           const annual = (gross + incentive) * 12;
