@@ -68,9 +68,15 @@ function PayrollPage() {
       if (ee) throw ee;
 
       const { data: attendance, error: ae } = await supabase
-        .from("attendance").select("employee_id, status, hours")
+        .from("attendance").select("employee_id, status, date, hours")
         .gte("date", monthStart).lte("date", monthEnd);
       if (ae) throw ae;
+
+      const { data: leaves, error: le } = await supabase
+        .from("leaves").select("employee_id, start_date, end_date")
+        .eq("status", "approved")
+        .lte("start_date", monthEnd).gte("end_date", monthStart);
+      if (le) throw le;
 
       const { data: allowedRows } = await supabase
         .from("allowed_week_offs").select("employee_id, allowed")
@@ -79,12 +85,26 @@ function PayrollPage() {
         (allowedRows ?? []).map((r: any) => [r.employee_id, Number(r.allowed ?? 0)]),
       );
 
-      type Counts = { present: number; weekOff: number; half: number };
+      const approvedLeaveDates = new Map<string, Set<string>>();
+      leaves?.forEach((leave: any) => {
+        const start = new Date(`${leave.start_date}T00:00:00`);
+        const end = new Date(`${leave.end_date}T00:00:00`);
+        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+          const date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+          if (date < monthStart || date > monthEnd) continue;
+          const set = approvedLeaveDates.get(leave.employee_id) ?? new Set<string>();
+          set.add(date);
+          approvedLeaveDates.set(leave.employee_id, set);
+        }
+      });
+
+      type Counts = { present: number; weekOff: number; leave: number; half: number };
       const countsMap = new Map<string, Counts>();
       attendance?.forEach((a: any) => {
-        const c = countsMap.get(a.employee_id) ?? { present: 0, weekOff: 0, half: 0 };
+        const c = countsMap.get(a.employee_id) ?? { present: 0, weekOff: 0, leave: 0, half: 0 };
         if (a.status === "present") c.present += 1;
         else if (a.status === "week-off") c.weekOff += 1;
+        else if (a.status === "leave") c.leave += 1;
         else if (a.status === "half-day") c.half += 1;
         countsMap.set(a.employee_id, c);
       });
@@ -107,12 +127,14 @@ function PayrollPage() {
       }
 
       const slipRows = (employees ?? []).map((e: any) => {
-        const c = countsMap.get(e.id) ?? { present: 0, weekOff: 0, half: 0 };
+        const c = countsMap.get(e.id) ?? { present: 0, weekOff: 0, leave: 0, half: 0 };
         const allowed = allowedMap.has(e.id) ? (allowedMap.get(e.id) ?? 0) : Number.POSITIVE_INFINITY;
         const countedWeekOff = Math.min(c.weekOff, allowed);
         const remainingAllowed = allowed - countedWeekOff;
         const halfDayCredit = Math.min(remainingAllowed, c.half / 2);
-        const daysWorked = Math.min(daysInMonth, c.present + countedWeekOff + c.half / 2 + halfDayCredit);
+        const approvedLeaves = approvedLeaveDates.get(e.id)?.size ?? 0;
+        const countedLeaves = c.leave > 0 ? Math.min(c.leave, approvedLeaves) : approvedLeaves;
+        const daysWorked = Math.min(daysInMonth, c.present + countedLeaves + countedWeekOff + c.half / 2 + halfDayCredit);
         const ratio = daysWorked / daysInMonth;
         const fullBasic = Number(e.basic_salary);
         const basic = fullBasic * ratio;
