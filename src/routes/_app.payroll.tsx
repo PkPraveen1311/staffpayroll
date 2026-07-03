@@ -108,7 +108,7 @@ function PayrollPage() {
 
       const slipRows = (employees ?? []).map((e: any) => {
         const c = countsMap.get(e.id) ?? { present: 0, weekOff: 0, half: 0 };
-        const allowed = allowedMap.get(e.id) ?? 0;
+        const allowed = allowedMap.has(e.id) ? (allowedMap.get(e.id) ?? 0) : Number.POSITIVE_INFINITY;
         const countedWeekOff = Math.min(c.weekOff, allowed);
         const remainingAllowed = allowed - countedWeekOff;
         const halfDayCredit = Math.min(remainingAllowed, c.half / 2);
