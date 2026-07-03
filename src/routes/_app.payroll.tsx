@@ -129,7 +129,7 @@ function PayrollPage() {
         const employer_pf = e.pf_enabled ? pfWage * 0.12 : 0;
         const edli = e.pf_enabled ? pfWage * 0.005 : 0;
         const pf_admin_charges = e.pf_enabled ? pfWage * 0.005 : 0;
-        const employer_esi = e.esi_enabled ? Math.round(basic * 0.0325) : 0;
+        const employer_esi = e.esi_enabled ? Math.ceil(basic * 0.0325) : 0;
 
         const gross = basic + hra + allow + medical + leaveEnc + bonus + special;
 
