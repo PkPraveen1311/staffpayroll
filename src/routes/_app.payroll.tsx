@@ -125,16 +125,16 @@ function PayrollPage() {
         const incentive = incentiveMap.get(e.id) ?? 0;
         const advance = advanceMap.get(e.id) ?? 0;
 
-        const pfWage = fullBasic > 15000 ? 15000 : basic;
+        const pfWage = Math.min(15000, basic);
         const employer_pf = e.pf_enabled ? pfWage * 0.12 : 0;
         const edli = e.pf_enabled ? pfWage * 0.005 : 0;
         const pf_admin_charges = e.pf_enabled ? pfWage * 0.005 : 0;
-        const employer_esi = e.esi_enabled ? Math.round(basic * 0.0325) : 0;
+        const employer_esi = e.esi_enabled ? Math.ceil(basic * 0.0325) : 0;
 
         const gross = basic + hra + allow + medical + leaveEnc + bonus + special;
 
         const pf = e.pf_enabled ? pfWage * 0.12 : 0;
-        const esi = e.esi_enabled ? Math.round(basic * 0.0075) : 0;
+        const esi = e.esi_enabled ? Math.ceil(basic * 0.0075) : 0;
         let tds = 0;
         if (e.tds_enabled) {
           const annual = (gross + incentive) * 12;
