@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -53,13 +53,6 @@ function WeekOffsPage() {
       return data;
     },
   });
-  const rows = rowsData ?? [];
-
-  const rowMap = useMemo(
-    () => new Map((rowsData ?? []).map((r: any) => [r.employee_id, r])),
-    [rowsData],
-  );
-
   useEffect(() => {
     if (!employeesData) return;
     const v: Record<string, string> = {};
