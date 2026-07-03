@@ -76,6 +76,20 @@ function AttendanceSheetPage() {
     },
   });
 
+  const { data: leaves = [] } = useQuery({
+    queryKey: ["approved-leaves-sheet", year, month],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("leaves")
+        .select("employee_id, start_date, end_date")
+        .eq("status", "approved")
+        .lte("start_date", endDate)
+        .gte("end_date", startDate);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
   const { data: allowedRows = [] } = useQuery({
     queryKey: ["allowed-week-offs-sheet", year, month],
     queryFn: async () => {
@@ -106,6 +120,22 @@ function AttendanceSheetPage() {
     return m;
   }, [attendance]);
 
+  const approvedLeaveMap = useMemo(() => {
+    const m = new Map<string, Set<string>>();
+    for (const leave of leaves) {
+      const start = new Date(`${leave.start_date}T00:00:00`);
+      const end = new Date(`${leave.end_date}T00:00:00`);
+      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+        const date = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+        if (date < startDate || date > endDate) continue;
+        const set = m.get(leave.employee_id) ?? new Set<string>();
+        set.add(date);
+        m.set(leave.employee_id, set);
+      }
+    }
+    return m;
+  }, [leaves, startDate, endDate]);
+
   const rows = useMemo(() => {
     return employees.map((e) => {
       const inner = matrix.get(e.id);
@@ -124,13 +154,15 @@ function AttendanceSheetPage() {
       const countedWeekOff = Math.min(counts.W, allowed);
       const remainingAllowed = allowed - countedWeekOff;
       const halfDayCredit = Math.min(remainingAllowed, counts.H / 2);
+      const approvedLeaves = approvedLeaveMap.get(e.id)?.size ?? 0;
+      const countedLeaves = counts.L > 0 ? Math.min(counts.L, approvedLeaves) : approvedLeaves;
       const net = Math.min(
         daysInMonth,
-        counts.P + counts.L + countedWeekOff + counts.H / 2 + halfDayCredit,
+        counts.P + countedLeaves + countedWeekOff + counts.H / 2 + halfDayCredit,
       );
       return { emp: e, counts, net };
     });
-  }, [employees, matrix, days, month, year, allowedMap, daysInMonth]);
+  }, [employees, matrix, days, month, year, allowedMap, approvedLeaveMap, daysInMonth]);
 
   const isSunday = (d: number) => new Date(year, month - 1, d).getDay() === 0;
 

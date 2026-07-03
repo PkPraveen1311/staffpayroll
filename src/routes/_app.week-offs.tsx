@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,6 +18,12 @@ const now = new Date();
 const monthsList = Array.from({ length: 12 }, (_, i) => i + 1);
 const yearsList = [now.getFullYear() - 1, now.getFullYear(), now.getFullYear() + 1];
 
+const sameValues = (a: Record<string, string>, b: Record<string, string>) => {
+  const aKeys = Object.keys(a);
+  const bKeys = Object.keys(b);
+  return aKeys.length === bKeys.length && aKeys.every((key) => a[key] === b[key]);
+};
+
 function WeekOffsPage() {
   const qc = useQueryClient();
   const [month, setMonth] = useState(now.getMonth() + 1);
@@ -25,7 +31,7 @@ function WeekOffsPage() {
   const [values, setValues] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
 
-  const { data: employees = [] } = useQuery({
+  const { data: employeesData } = useQuery({
     queryKey: ["employees-min"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -35,8 +41,9 @@ function WeekOffsPage() {
       return data;
     },
   });
+  const employees = employeesData ?? [];
 
-  const { data: rows = [] } = useQuery({
+  const { data: rowsData } = useQuery({
     queryKey: ["allowed-week-offs", year, month],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -46,20 +53,16 @@ function WeekOffsPage() {
       return data;
     },
   });
-
-  const rowMap = useMemo(
-    () => new Map(rows.map((r: any) => [r.employee_id, r])),
-    [rows],
-  );
-
   useEffect(() => {
+    if (!employeesData) return;
     const v: Record<string, string> = {};
-    employees.forEach((e: any) => {
-      const r: any = rowMap.get(e.id);
+    const map = new Map((rowsData ?? []).map((r: any) => [r.employee_id, r]));
+    employeesData.forEach((e: any) => {
+      const r: any = map.get(e.id);
       v[e.id] = String(r?.allowed ?? 4);
     });
-    setValues(v);
-  }, [employees, rowMap]);
+    setValues((current) => (sameValues(current, v) ? current : v));
+  }, [employeesData, rowsData, month, year]);
 
   const setAll = (n: number) => {
     const v: Record<string, string> = {};
@@ -94,7 +97,7 @@ function WeekOffsPage() {
         <h1 className="text-3xl font-bold">Allowed Week-Offs</h1>
         <p className="text-sm text-muted-foreground">
           Set the number of paid week-offs each employee is entitled to for the month.
-          Used in payroll: <span className="font-mono">days worked = present + min(week-off, allowed) + (half-day / 2)</span>.
+          Payroll also credits approved leave days from the Leaves tab.
         </p>
       </div>
 
