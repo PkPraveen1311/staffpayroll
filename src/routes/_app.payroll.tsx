@@ -134,7 +134,7 @@ function PayrollPage() {
         const gross = basic + hra + allow + medical + leaveEnc + bonus + special;
 
         const pf = e.pf_enabled ? pfWage * 0.12 : 0;
-        const esi = e.esi_enabled ? Math.round(basic * 0.0075) : 0;
+        const esi = e.esi_enabled ? Math.ceil(basic * 0.0075) : 0;
         let tds = 0;
         if (e.tds_enabled) {
           const annual = (gross + incentive) * 12;
