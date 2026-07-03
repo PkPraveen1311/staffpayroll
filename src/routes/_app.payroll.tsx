@@ -144,13 +144,12 @@ function PayrollPage() {
           halfDates: new Set<string>(),
         };
         const allowed = allowedMap.has(e.id) ? (allowedMap.get(e.id) ?? 0) : Number.POSITIVE_INFINITY;
-        const countedWeekOffDates = [...c.weekOffDates].slice(0, allowed);
+        const countedWeekOffDates = [...c.weekOffDates].sort().slice(0, allowed);
         const countedWeekOff = countedWeekOffDates.length;
         const remainingAllowed = allowed - countedWeekOff;
-        const approvedLeaves = approvedLeaveDates.get(e.id)?.size ?? 0;
         const countedLeaveDates = c.leaveDates.size > 0
-          ? [...c.leaveDates].filter((date) => approvedLeaveDates.get(e.id)?.has(date))
-          : [...(approvedLeaveDates.get(e.id) ?? new Set<string>())];
+          ? [...c.leaveDates].filter((date) => approvedLeaveDates.get(e.id)?.has(date)).sort()
+          : [...(approvedLeaveDates.get(e.id) ?? new Set<string>())].sort();
         const paidFullDates = new Set<string>([
           ...c.presentDates,
           ...countedWeekOffDates,
