@@ -98,14 +98,24 @@ function PayrollPage() {
         }
       });
 
-      type Counts = { present: number; weekOff: number; leave: number; half: number };
+      type Counts = {
+        presentDates: Set<string>;
+        weekOffDates: Set<string>;
+        leaveDates: Set<string>;
+        halfDates: Set<string>;
+      };
       const countsMap = new Map<string, Counts>();
       attendance?.forEach((a: any) => {
-        const c = countsMap.get(a.employee_id) ?? { present: 0, weekOff: 0, leave: 0, half: 0 };
-        if (a.status === "present") c.present += 1;
-        else if (a.status === "week-off") c.weekOff += 1;
-        else if (a.status === "leave") c.leave += 1;
-        else if (a.status === "half-day") c.half += 1;
+        const c = countsMap.get(a.employee_id) ?? {
+          presentDates: new Set<string>(),
+          weekOffDates: new Set<string>(),
+          leaveDates: new Set<string>(),
+          halfDates: new Set<string>(),
+        };
+        if (a.status === "present") c.presentDates.add(a.date);
+        else if (a.status === "week-off") c.weekOffDates.add(a.date);
+        else if (a.status === "leave") c.leaveDates.add(a.date);
+        else if (a.status === "half-day") c.halfDates.add(a.date);
         countsMap.set(a.employee_id, c);
       });
 
@@ -127,14 +137,28 @@ function PayrollPage() {
       }
 
       const slipRows = (employees ?? []).map((e: any) => {
-        const c = countsMap.get(e.id) ?? { present: 0, weekOff: 0, leave: 0, half: 0 };
+        const c = countsMap.get(e.id) ?? {
+          presentDates: new Set<string>(),
+          weekOffDates: new Set<string>(),
+          leaveDates: new Set<string>(),
+          halfDates: new Set<string>(),
+        };
         const allowed = allowedMap.has(e.id) ? (allowedMap.get(e.id) ?? 0) : Number.POSITIVE_INFINITY;
-        const countedWeekOff = Math.min(c.weekOff, allowed);
+        const countedWeekOffDates = [...c.weekOffDates].slice(0, allowed);
+        const countedWeekOff = countedWeekOffDates.length;
         const remainingAllowed = allowed - countedWeekOff;
-        const halfDayCredit = Math.min(remainingAllowed, c.half / 2);
         const approvedLeaves = approvedLeaveDates.get(e.id)?.size ?? 0;
-        const countedLeaves = c.leave > 0 ? Math.min(c.leave, approvedLeaves) : approvedLeaves;
-        const daysWorked = Math.min(daysInMonth, c.present + countedLeaves + countedWeekOff + c.half / 2 + halfDayCredit);
+        const countedLeaveDates = c.leaveDates.size > 0
+          ? [...c.leaveDates].filter((date) => approvedLeaveDates.get(e.id)?.has(date))
+          : [...(approvedLeaveDates.get(e.id) ?? new Set<string>())];
+        const paidFullDates = new Set<string>([
+          ...c.presentDates,
+          ...countedWeekOffDates,
+          ...countedLeaveDates,
+        ]);
+        const payableHalfDays = [...c.halfDates].filter((date) => !paidFullDates.has(date)).length;
+        const halfDayCredit = Math.min(remainingAllowed, payableHalfDays / 2);
+        const daysWorked = Math.min(daysInMonth, paidFullDates.size + payableHalfDays / 2 + halfDayCredit);
         const ratio = daysWorked / daysInMonth;
         const fullBasic = Number(e.basic_salary);
         const basic = fullBasic * ratio;
