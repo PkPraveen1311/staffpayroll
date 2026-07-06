@@ -143,7 +143,7 @@ function PayrollPage() {
           leaveDates: new Set<string>(),
           halfDates: new Set<string>(),
         };
-        const allowed = allowedMap.has(e.id) ? (allowedMap.get(e.id) ?? 0) : Number.POSITIVE_INFINITY;
+        const allowed = allowedMap.has(e.id) ? (allowedMap.get(e.id) ?? 0) : 4;
         const countedWeekOffDates = [...c.weekOffDates].sort().slice(0, allowed);
         const countedWeekOff = countedWeekOffDates.length;
         const remainingAllowed = allowed - countedWeekOff;
