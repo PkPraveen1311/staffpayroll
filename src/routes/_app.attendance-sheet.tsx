@@ -150,7 +150,7 @@ function AttendanceSheetPage() {
         else if (s === "leave") counts.L++;
         else if (s === "week-off") counts.W++;
       }
-      const allowed = allowedMap.get(e.id) ?? 0;
+      const allowed = allowedMap.has(e.id) ? (allowedMap.get(e.id) ?? 0) : 4;
       const countedWeekOff = Math.min(counts.W, allowed);
       const remainingAllowed = allowed - countedWeekOff;
       const halfDayCredit = Math.min(remainingAllowed, counts.H / 2);
