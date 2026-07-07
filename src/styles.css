@@ -143,8 +143,25 @@
     background: white !important;
     background-image: none !important;
     color: #000 !important;
+    height: auto !important;
+    overflow: visible !important;
   }
   body * { visibility: hidden !important; }
+  /* Neutralize Radix Dialog fixed positioning / transforms / clipping so print-area can escape */
+  [role="dialog"],
+  [data-radix-dialog-content],
+  [data-radix-popper-content-wrapper] {
+    position: static !important;
+    transform: none !important;
+    inset: auto !important;
+    max-height: none !important;
+    max-width: none !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+    border: none !important;
+    background: white !important;
+  }
+  [data-radix-dialog-overlay] { display: none !important; }
   .print-area, .print-area * { visibility: visible !important; color: #000 !important; }
   .print-area {
     position: absolute !important;
@@ -159,3 +176,4 @@
   .print-area thead { background: #f0f0f0 !important; }
   .no-print, [data-sidebar], header.no-print { display: none !important; }
 }
+
