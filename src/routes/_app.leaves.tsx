@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Check, X, Pencil, Trash2, RotateCcw } from "lucide-react";
+import { Plus, Check, X, Pencil, Trash2, RotateCcw, History, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/leaves")({ component: LeavesPage });
@@ -24,11 +24,16 @@ const TYPES = ["casual", "sick", "earned", "unpaid"];
 const STATUSES = ["pending", "approved", "rejected"];
 const emptyForm = { employee_id: "", leave_type: "casual", start_date: "", end_date: "", reason: "", status: "pending" };
 
+function statusVariant(s: string) {
+  return s === "approved" ? "default" : s === "rejected" ? "destructive" : "secondary";
+}
+
 function LeavesPage() {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<typeof emptyForm>(emptyForm);
+  const [historyLeaveId, setHistoryLeaveId] = useState<string | null>(null);
 
   const { data: employees = [] } = useQuery({
     queryKey: ["employees-min"],
@@ -89,7 +94,7 @@ function LeavesPage() {
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-3xl font-bold">Leaves</h1>
-          <p className="text-sm text-muted-foreground">Track, approve, and edit time off anytime.</p>
+          <p className="text-sm text-muted-foreground">Track, approve, edit — every status change is logged.</p>
         </div>
         <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setEditingId(null); setForm(emptyForm); } }}>
           <DialogTrigger asChild>
@@ -152,7 +157,7 @@ function LeavesPage() {
                 <TableCell>
                   <Select value={l.status} onValueChange={(v) => setStatus(l.id, v)}>
                     <SelectTrigger className="h-8 w-32">
-                      <Badge variant={l.status === "approved" ? "default" : l.status === "rejected" ? "destructive" : "secondary"} className="capitalize">{l.status}</Badge>
+                      <Badge variant={statusVariant(l.status)} className="capitalize">{l.status}</Badge>
                     </SelectTrigger>
                     <SelectContent>{STATUSES.map(s => <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>)}</SelectContent>
                   </Select>
@@ -167,6 +172,7 @@ function LeavesPage() {
                     ) : (
                       <Button size="icon" variant="ghost" title="Revert to pending" onClick={() => setStatus(l.id, "pending")}><RotateCcw className="h-4 w-4" /></Button>
                     )}
+                    <Button size="icon" variant="ghost" title="Audit trail" onClick={() => setHistoryLeaveId(l.id)}><History className="h-4 w-4" /></Button>
                     <Button size="icon" variant="ghost" title="Edit" onClick={() => openEdit(l)}><Pencil className="h-4 w-4" /></Button>
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
@@ -175,7 +181,7 @@ function LeavesPage() {
                       <AlertDialogContent>
                         <AlertDialogHeader>
                           <AlertDialogTitle>Delete leave request?</AlertDialogTitle>
-                          <AlertDialogDescription>This cannot be undone.</AlertDialogDescription>
+                          <AlertDialogDescription>This cannot be undone. Audit trail entries will also be removed.</AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                           <AlertDialogCancel>Cancel</AlertDialogCancel>
@@ -190,6 +196,58 @@ function LeavesPage() {
           </TableBody>
         </Table>
       </Card>
+
+      <HistoryDialog leaveId={historyLeaveId} onClose={() => setHistoryLeaveId(null)} />
     </div>
+  );
+}
+
+function HistoryDialog({ leaveId, onClose }: { leaveId: string | null; onClose: () => void }) {
+  const { data: history = [], isLoading } = useQuery({
+    queryKey: ["leave-history", leaveId],
+    queryFn: async () => {
+      if (!leaveId) return [];
+      const { data, error } = await supabase
+        .from("leave_status_history")
+        .select("*")
+        .eq("leave_id", leaveId)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    },
+    enabled: !!leaveId,
+  });
+
+  return (
+    <Dialog open={!!leaveId} onOpenChange={(v) => { if (!v) onClose(); }}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader><DialogTitle>Approval audit trail</DialogTitle></DialogHeader>
+        <div className="space-y-2 max-h-[60vh] overflow-y-auto">
+          {isLoading ? (
+            <p className="text-sm text-muted-foreground text-center py-6">Loading…</p>
+          ) : history.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-6">No history yet.</p>
+          ) : history.map((h: any) => (
+            <div key={h.id} className="flex items-start justify-between gap-3 rounded-lg border border-border/60 p-3 bg-background/50">
+              <div className="flex items-center gap-2 flex-wrap">
+                {h.from_status ? (
+                  <>
+                    <Badge variant={statusVariant(h.from_status)} className="capitalize">{h.from_status}</Badge>
+                    <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                  </>
+                ) : (
+                  <span className="text-xs text-muted-foreground">Created as</span>
+                )}
+                <Badge variant={statusVariant(h.to_status)} className="capitalize">{h.to_status}</Badge>
+              </div>
+              <div className="text-right text-xs text-muted-foreground shrink-0">
+                <div>{new Date(h.created_at).toLocaleString()}</div>
+                <div className="font-mono truncate max-w-[200px]">{h.changed_by_email || (h.changed_by ? h.changed_by.slice(0, 8) : "system")}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }

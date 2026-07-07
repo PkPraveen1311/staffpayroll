@@ -1,6 +1,6 @@
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import {
-  LayoutDashboard, Users, CalendarCheck, CalendarDays, CalendarOff, Plane, Wallet, FileText, Receipt, Plug, Settings, LogOut, Cake,
+  LayoutDashboard, Users, CalendarCheck, CalendarDays, CalendarOff, Plane, History, Wallet, FileText, Receipt, Plug, Settings, LogOut, Cake,
 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
@@ -17,12 +17,14 @@ const items = [
   { title: "Attendance Sheet", url: "/attendance-sheet", icon: CalendarDays },
   { title: "Allowed Week-Offs", url: "/week-offs", icon: CalendarOff },
   { title: "Leaves", url: "/leaves", icon: Plane },
+  { title: "Leave History", url: "/leave-history", icon: History },
   { title: "Payroll", url: "/payroll", icon: Wallet },
   { title: "Payslips", url: "/payslips", icon: FileText },
   { title: "Challans", url: "/challans", icon: Receipt },
   { title: "Integrations", url: "/integrations", icon: Plug },
   { title: "Settings", url: "/settings", icon: Settings },
 ];
+
 
 export function AppSidebar() {
   const path = useRouterState({ select: (r) => r.location.pathname });

@@ -178,6 +178,47 @@ export type Database = {
         }
         Relationships: []
       }
+      leave_status_history: {
+        Row: {
+          changed_by: string | null
+          changed_by_email: string | null
+          created_at: string
+          from_status: string | null
+          id: string
+          leave_id: string
+          note: string | null
+          to_status: string
+        }
+        Insert: {
+          changed_by?: string | null
+          changed_by_email?: string | null
+          created_at?: string
+          from_status?: string | null
+          id?: string
+          leave_id: string
+          note?: string | null
+          to_status: string
+        }
+        Update: {
+          changed_by?: string | null
+          changed_by_email?: string | null
+          created_at?: string
+          from_status?: string | null
+          id?: string
+          leave_id?: string
+          note?: string | null
+          to_status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leave_status_history_leave_id_fkey"
+            columns: ["leave_id"]
+            isOneToOne: false
+            referencedRelation: "leaves"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       leaves: {
         Row: {
           created_at: string
