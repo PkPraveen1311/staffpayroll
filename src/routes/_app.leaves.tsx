@@ -9,19 +9,26 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Check, X } from "lucide-react";
+import { Plus, Check, X, Pencil, Trash2, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/leaves")({ component: LeavesPage });
 
 const TYPES = ["casual", "sick", "earned", "unpaid"];
+const STATUSES = ["pending", "approved", "rejected"];
+const emptyForm = { employee_id: "", leave_type: "casual", start_date: "", end_date: "", reason: "", status: "pending" };
 
 function LeavesPage() {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ employee_id: "", leave_type: "casual", start_date: "", end_date: "", reason: "" });
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState<typeof emptyForm>(emptyForm);
 
   const { data: employees = [] } = useQuery({
     queryKey: ["employees-min"],
@@ -32,19 +39,48 @@ function LeavesPage() {
     queryFn: async () => (await supabase.from("leaves").select("*, employees(full_name, employee_code)").order("created_at", { ascending: false })).data ?? [],
   });
 
+  const openNew = () => { setEditingId(null); setForm(emptyForm); setOpen(true); };
+  const openEdit = (l: any) => {
+    setEditingId(l.id);
+    setForm({
+      employee_id: l.employee_id,
+      leave_type: l.leave_type,
+      start_date: l.start_date,
+      end_date: l.end_date,
+      reason: l.reason ?? "",
+      status: l.status,
+    });
+    setOpen(true);
+  };
+
   const submit = async () => {
     if (!form.employee_id || !form.start_date || !form.end_date) { toast.error("Fill all fields"); return; }
-    const { error } = await supabase.from("leaves").insert(form);
-    if (error) { toast.error(error.message); return; }
-    toast.success("Leave request added");
+    if (editingId) {
+      const { error } = await supabase.from("leaves").update(form).eq("id", editingId);
+      if (error) { toast.error(error.message); return; }
+      toast.success("Leave updated");
+    } else {
+      const { error } = await supabase.from("leaves").insert(form);
+      if (error) { toast.error(error.message); return; }
+      toast.success("Leave request added");
+    }
     setOpen(false);
-    setForm({ employee_id: "", leave_type: "casual", start_date: "", end_date: "", reason: "" });
+    setEditingId(null);
+    setForm(emptyForm);
     qc.invalidateQueries({ queryKey: ["leaves"] });
   };
 
   const setStatus = async (id: string, status: string) => {
     const { error } = await supabase.from("leaves").update({ status }).eq("id", id);
     if (error) { toast.error(error.message); return; }
+    toast.success(`Marked ${status}`);
+    qc.invalidateQueries({ queryKey: ["leaves"] });
+  };
+
+  const remove = async (id: string) => {
+    const { error } = await supabase.from("leaves").delete().eq("id", id);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Leave deleted");
     qc.invalidateQueries({ queryKey: ["leaves"] });
   };
 
@@ -53,14 +89,14 @@ function LeavesPage() {
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-3xl font-bold">Leaves</h1>
-          <p className="text-sm text-muted-foreground">Track and approve time off.</p>
+          <p className="text-sm text-muted-foreground">Track, approve, and edit time off anytime.</p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setEditingId(null); setForm(emptyForm); } }}>
           <DialogTrigger asChild>
-            <Button className="bg-gradient-primary text-primary-foreground"><Plus className="h-4 w-4 mr-1" /> New request</Button>
+            <Button onClick={openNew} className="bg-gradient-primary text-primary-foreground"><Plus className="h-4 w-4 mr-1" /> New request</Button>
           </DialogTrigger>
           <DialogContent>
-            <DialogHeader><DialogTitle>New leave request</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle>{editingId ? "Edit leave" : "New leave request"}</DialogTitle></DialogHeader>
             <div className="space-y-3">
               <div className="space-y-1.5">
                 <Label>Employee</Label>
@@ -79,12 +115,19 @@ function LeavesPage() {
                     <SelectContent>{TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
+                <div className="space-y-1.5">
+                  <Label>Status</Label>
+                  <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>{STATUSES.map(t => <SelectItem key={t} value={t} className="capitalize">{t}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
                 <div className="space-y-1.5"><Label>From</Label><Input type="date" value={form.start_date} onChange={(e) => setForm({ ...form, start_date: e.target.value })} /></div>
                 <div className="space-y-1.5"><Label>To</Label><Input type="date" value={form.end_date} onChange={(e) => setForm({ ...form, end_date: e.target.value })} /></div>
               </div>
               <div className="space-y-1.5"><Label>Reason</Label><Textarea value={form.reason} onChange={(e) => setForm({ ...form, reason: e.target.value })} /></div>
             </div>
-            <DialogFooter><Button onClick={submit} className="bg-gradient-primary text-primary-foreground">Submit</Button></DialogFooter>
+            <DialogFooter><Button onClick={submit} className="bg-gradient-primary text-primary-foreground">{editingId ? "Save changes" : "Submit"}</Button></DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
@@ -107,15 +150,40 @@ function LeavesPage() {
                 <TableCell className="text-sm">{l.start_date} → {l.end_date}</TableCell>
                 <TableCell className="text-sm text-muted-foreground max-w-xs truncate">{l.reason || "—"}</TableCell>
                 <TableCell>
-                  <Badge variant={l.status === "approved" ? "default" : l.status === "rejected" ? "destructive" : "secondary"}>{l.status}</Badge>
+                  <Select value={l.status} onValueChange={(v) => setStatus(l.id, v)}>
+                    <SelectTrigger className="h-8 w-32">
+                      <Badge variant={l.status === "approved" ? "default" : l.status === "rejected" ? "destructive" : "secondary"} className="capitalize">{l.status}</Badge>
+                    </SelectTrigger>
+                    <SelectContent>{STATUSES.map(s => <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>)}</SelectContent>
+                  </Select>
                 </TableCell>
                 <TableCell className="text-right">
-                  {l.status === "pending" && (
-                    <>
-                      <Button size="icon" variant="ghost" onClick={() => setStatus(l.id, "approved")}><Check className="h-4 w-4" /></Button>
-                      <Button size="icon" variant="ghost" onClick={() => setStatus(l.id, "rejected")}><X className="h-4 w-4 text-destructive" /></Button>
-                    </>
-                  )}
+                  <div className="flex items-center justify-end gap-1">
+                    {l.status === "pending" ? (
+                      <>
+                        <Button size="icon" variant="ghost" title="Approve" onClick={() => setStatus(l.id, "approved")}><Check className="h-4 w-4 text-primary" /></Button>
+                        <Button size="icon" variant="ghost" title="Reject" onClick={() => setStatus(l.id, "rejected")}><X className="h-4 w-4 text-destructive" /></Button>
+                      </>
+                    ) : (
+                      <Button size="icon" variant="ghost" title="Revert to pending" onClick={() => setStatus(l.id, "pending")}><RotateCcw className="h-4 w-4" /></Button>
+                    )}
+                    <Button size="icon" variant="ghost" title="Edit" onClick={() => openEdit(l)}><Pencil className="h-4 w-4" /></Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button size="icon" variant="ghost" title="Delete"><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete leave request?</AlertDialogTitle>
+                          <AlertDialogDescription>This cannot be undone.</AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => remove(l.id)}>Delete</AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
                 </TableCell>
               </TableRow>
             ))}
