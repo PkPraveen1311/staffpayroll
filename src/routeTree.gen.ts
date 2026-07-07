@@ -17,6 +17,7 @@ import { Route as AppSettingsRouteImport } from './routes/_app.settings'
 import { Route as AppPayslipsRouteImport } from './routes/_app.payslips'
 import { Route as AppPayrollRouteImport } from './routes/_app.payroll'
 import { Route as AppLeavesRouteImport } from './routes/_app.leaves'
+import { Route as AppLeaveHistoryRouteImport } from './routes/_app.leave-history'
 import { Route as AppIntegrationsRouteImport } from './routes/_app.integrations'
 import { Route as AppEmployeesRouteImport } from './routes/_app.employees'
 import { Route as AppChallansRouteImport } from './routes/_app.challans'
@@ -63,6 +64,11 @@ const AppLeavesRoute = AppLeavesRouteImport.update({
   path: '/leaves',
   getParentRoute: () => AppRoute,
 } as any)
+const AppLeaveHistoryRoute = AppLeaveHistoryRouteImport.update({
+  id: '/leave-history',
+  path: '/leave-history',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppIntegrationsRoute = AppIntegrationsRouteImport.update({
   id: '/integrations',
   path: '/integrations',
@@ -103,6 +109,7 @@ export interface FileRoutesByFullPath {
   '/challans': typeof AppChallansRoute
   '/employees': typeof AppEmployeesRoute
   '/integrations': typeof AppIntegrationsRoute
+  '/leave-history': typeof AppLeaveHistoryRoute
   '/leaves': typeof AppLeavesRoute
   '/payroll': typeof AppPayrollRoute
   '/payslips': typeof AppPayslipsRoute
@@ -117,6 +124,7 @@ export interface FileRoutesByTo {
   '/challans': typeof AppChallansRoute
   '/employees': typeof AppEmployeesRoute
   '/integrations': typeof AppIntegrationsRoute
+  '/leave-history': typeof AppLeaveHistoryRoute
   '/leaves': typeof AppLeavesRoute
   '/payroll': typeof AppPayrollRoute
   '/payslips': typeof AppPayslipsRoute
@@ -134,6 +142,7 @@ export interface FileRoutesById {
   '/_app/challans': typeof AppChallansRoute
   '/_app/employees': typeof AppEmployeesRoute
   '/_app/integrations': typeof AppIntegrationsRoute
+  '/_app/leave-history': typeof AppLeaveHistoryRoute
   '/_app/leaves': typeof AppLeavesRoute
   '/_app/payroll': typeof AppPayrollRoute
   '/_app/payslips': typeof AppPayslipsRoute
@@ -152,6 +161,7 @@ export interface FileRouteTypes {
     | '/challans'
     | '/employees'
     | '/integrations'
+    | '/leave-history'
     | '/leaves'
     | '/payroll'
     | '/payslips'
@@ -166,6 +176,7 @@ export interface FileRouteTypes {
     | '/challans'
     | '/employees'
     | '/integrations'
+    | '/leave-history'
     | '/leaves'
     | '/payroll'
     | '/payslips'
@@ -182,6 +193,7 @@ export interface FileRouteTypes {
     | '/_app/challans'
     | '/_app/employees'
     | '/_app/integrations'
+    | '/_app/leave-history'
     | '/_app/leaves'
     | '/_app/payroll'
     | '/_app/payslips'
@@ -253,6 +265,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppLeavesRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/leave-history': {
+      id: '/_app/leave-history'
+      path: '/leave-history'
+      fullPath: '/leave-history'
+      preLoaderRoute: typeof AppLeaveHistoryRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/integrations': {
       id: '/_app/integrations'
       path: '/integrations'
@@ -305,6 +324,7 @@ interface AppRouteChildren {
   AppChallansRoute: typeof AppChallansRoute
   AppEmployeesRoute: typeof AppEmployeesRoute
   AppIntegrationsRoute: typeof AppIntegrationsRoute
+  AppLeaveHistoryRoute: typeof AppLeaveHistoryRoute
   AppLeavesRoute: typeof AppLeavesRoute
   AppPayrollRoute: typeof AppPayrollRoute
   AppPayslipsRoute: typeof AppPayslipsRoute
@@ -320,6 +340,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppChallansRoute: AppChallansRoute,
   AppEmployeesRoute: AppEmployeesRoute,
   AppIntegrationsRoute: AppIntegrationsRoute,
+  AppLeaveHistoryRoute: AppLeaveHistoryRoute,
   AppLeavesRoute: AppLeavesRoute,
   AppPayrollRoute: AppPayrollRoute,
   AppPayslipsRoute: AppPayslipsRoute,
