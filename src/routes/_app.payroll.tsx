@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Play, Printer, FileSpreadsheet } from "lucide-react";
 import { toast } from "sonner";
 import { fmtINR, monthName } from "@/lib/format";
-import { exportToXlsx } from "@/lib/xlsx-export";
+import { exportPayrollRegisterXlsx } from "@/lib/payroll-xlsx";
 
 export const Route = createFileRoute("/_app/payroll")({ component: PayrollPage });
 
