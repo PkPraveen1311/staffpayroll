@@ -12,6 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Eye, Printer, Check, MessageCircle, Mail } from "lucide-react";
 import { fmtINR, monthName } from "@/lib/format";
 import { toast } from "sonner";
+import { generatePayslipPdf } from "@/lib/payslip-pdf";
 
 export const Route = createFileRoute("/_app/payslips")({ component: PayslipsPage });
 
@@ -223,7 +224,7 @@ function SlipDialog({ slip, period }: { slip: any; period: string }) {
           </div>
         </div>
         <div className="flex justify-end pt-2 no-print">
-          <Button onClick={() => window.print()} variant="outline"><Printer className="h-4 w-4 mr-1" /> Print</Button>
+          <Button onClick={() => generatePayslipPdf(slip, period).catch((e) => toast.error(e?.message ?? "Failed to generate PDF"))} className="bg-gradient-primary text-primary-foreground"><Printer className="h-4 w-4 mr-1" /> Download PDF</Button>
         </div>
       </DialogContent>
     </Dialog>

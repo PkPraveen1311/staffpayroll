@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Play, Printer, FileSpreadsheet } from "lucide-react";
 import { toast } from "sonner";
 import { fmtINR, monthName } from "@/lib/format";
-import { exportToXlsx } from "@/lib/xlsx-export";
+import { exportPayrollRegisterXlsx } from "@/lib/payroll-xlsx";
 
 export const Route = createFileRoute("/_app/payroll")({ component: PayrollPage });
 
@@ -269,24 +269,34 @@ function PayrollPage() {
           <Button
             onClick={() => {
               const rows = slips.map((s: any) => ({
-                Code: s.employees?.employee_code,
-                Name: s.employees?.full_name,
-                Designation: s.employees?.designation ?? "",
-                Department: s.employees?.department ?? "",
-                Days: s.days_worked,
-                Basic: Number(s.basic), HRA: Number(s.hra),
-                Allowances: Number(s.allowances), Medical: Number(s.medical_allowance),
-                "Leave Enc": Number(s.leave_encashment), Bonus: Number(s.statutory_bonus),
-                Special: Number(s.special_allowance),
-                Gross: Number(s.gross), Incentive: Number(s.incentive),
-                PF: Number(s.pf), ESI: Number(s.esi), TDS: Number(s.tds), Advance: Number(s.advance),
-                "Employer PF": Number(s.employer_pf), "Employer ESI": Number(s.employer_esi),
-                EDLI: Number(s.edli), "PF Admin": Number(s.pf_admin_charges),
-                "Total Deductions": Number(s.total_deductions),
-                "Net Pay": Number(s.net_pay),
-                PAN: s.employees?.pan ?? "", "Bank A/C": s.employees?.bank_account ?? "",
+                code: s.employees?.employee_code ?? "",
+                name: s.employees?.full_name ?? "",
+                designation: s.employees?.designation ?? "",
+                department: s.employees?.department ?? "",
+                days: Number(s.days_worked ?? 0),
+                basic: Number(s.basic ?? 0),
+                hra: Number(s.hra ?? 0),
+                allowances: Number(s.allowances ?? 0),
+                medical: Number(s.medical_allowance ?? 0),
+                leaveEnc: Number(s.leave_encashment ?? 0),
+                bonus: Number(s.statutory_bonus ?? 0),
+                special: Number(s.special_allowance ?? 0),
+                gross: Number(s.gross ?? 0),
+                incentive: Number(s.incentive ?? 0),
+                pf: Number(s.pf ?? 0),
+                esi: Number(s.esi ?? 0),
+                tds: Number(s.tds ?? 0),
+                advance: Number(s.advance ?? 0),
+                employerPf: Number(s.employer_pf ?? 0),
+                employerEsi: Number(s.employer_esi ?? 0),
+                edli: Number(s.edli ?? 0),
+                pfAdmin: Number(s.pf_admin_charges ?? 0),
+                totalDed: Number(s.total_deductions ?? 0),
+                netPay: Number(s.net_pay ?? 0),
+                pan: s.employees?.pan ?? "",
+                bankAc: s.employees?.bank_account ?? "",
               }));
-              exportToXlsx(`Payroll_Register_${monthName(month)}_${year}.xlsx`, rows, "Register");
+              exportPayrollRegisterXlsx(month, year, rows).catch((e) => toast.error(e?.message ?? "Excel export failed"));
             }}
             variant="outline" disabled={!slips.length}>
             <FileSpreadsheet className="h-4 w-4 mr-1" /> Excel
