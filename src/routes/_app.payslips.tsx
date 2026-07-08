@@ -12,6 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Eye, Printer, Check, MessageCircle, Mail } from "lucide-react";
 import { fmtINR, monthName } from "@/lib/format";
 import { toast } from "sonner";
+import { generatePayslipPdf } from "@/lib/payslip-pdf";
 
 export const Route = createFileRoute("/_app/payslips")({ component: PayslipsPage });
 
