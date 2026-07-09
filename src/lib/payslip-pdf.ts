@@ -1,6 +1,6 @@
 import { jsPDF } from "jspdf";
 import logoAsset from "@/assets/pehchaan-logo.png.asset.json";
-import { fmtINR } from "@/lib/format";
+
 
 let logoDataCache: string | null = null;
 async function getLogoData(): Promise<string | null> {
@@ -21,7 +21,32 @@ async function getLogoData(): Promise<string | null> {
   }
 }
 
-const money = (n: any) => fmtINR(Number(n ?? 0));
+const money = (n: any) => {
+  const v = Number(n ?? 0);
+  return "Rs. " + new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 }).format(v);
+};
+
+function numberToWordsIndian(num: number): string {
+  num = Math.round(num);
+  if (num === 0) return "Zero Rupees Only";
+  const a = ["","One","Two","Three","Four","Five","Six","Seven","Eight","Nine","Ten","Eleven","Twelve","Thirteen","Fourteen","Fifteen","Sixteen","Seventeen","Eighteen","Nineteen"];
+  const b = ["","","Twenty","Thirty","Forty","Fifty","Sixty","Seventy","Eighty","Ninety"];
+  const twoDigit = (n: number): string => n < 20 ? a[n] : b[Math.floor(n/10)] + (n%10 ? " " + a[n%10] : "");
+  const threeDigit = (n: number): string => {
+    const h = Math.floor(n/100), r = n%100;
+    return (h ? a[h] + " Hundred" + (r ? " " : "") : "") + (r ? twoDigit(r) : "");
+  };
+  let n = num, out = "";
+  const crore = Math.floor(n / 10000000); n %= 10000000;
+  const lakh = Math.floor(n / 100000); n %= 100000;
+  const thousand = Math.floor(n / 1000); n %= 1000;
+  const rest = n;
+  if (crore) out += twoDigit(crore) + " Crore ";
+  if (lakh) out += twoDigit(lakh) + " Lakh ";
+  if (thousand) out += twoDigit(thousand) + " Thousand ";
+  if (rest) out += threeDigit(rest);
+  return out.trim().replace(/\s+/g, " ") + " Rupees Only";
+}
 
 export async function generatePayslipPdf(slip: any, period: string) {
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
@@ -123,7 +148,7 @@ export async function generatePayslipPdf(slip: any, period: string) {
     doc.setFontSize(9.5);
     doc.text(title, x + 3, ty + 5);
     doc.setTextColor(255, 255, 255);
-    doc.text("Amount (₹)", x + tableW - 3, ty + 5, { align: "right" });
+    doc.text("Amount (Rs.)", x + tableW - 3, ty + 5, { align: "right" });
     ty += 7;
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
@@ -193,19 +218,24 @@ export async function generatePayslipPdf(slip: any, period: string) {
   y += 15;
 
   // Net Pay banner
+  const bannerH = 26;
   doc.setFillColor(34, 139, 130);
-  doc.rect(M, y, W - 2 * M, 18, "F");
+  doc.rect(M, y, W - 2 * M, bannerH, "F");
   doc.setTextColor(255, 255, 255);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
   doc.text("NET PAY", M + 5, y + 7);
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(20);
-  doc.text(money(net), W - M - 5, y + 12, { align: "right" });
-  doc.setFontSize(8);
+  doc.setFontSize(18);
+  doc.text(money(net), W - M - 5, y + 11, { align: "right" });
+  doc.setFontSize(7.5);
   doc.setFont("helvetica", "normal");
-  doc.text(`(Gross ${money(slip.gross)} + Incentive ${money(slip.incentive ?? 0)} − Deductions ${money(totalDed)})`, M + 5, y + 14);
-  y += 22;
+  doc.text(`(Gross ${money(slip.gross)} + Incentive ${money(slip.incentive ?? 0)} - Deductions ${money(totalDed)})`, M + 5, y + 13, { maxWidth: W - 2 * M - 10 });
+  doc.setFont("helvetica", "italic");
+  doc.setFontSize(9);
+  const words = "In words: " + numberToWordsIndian(net);
+  doc.text(words, M + 5, y + 21, { maxWidth: W - 2 * M - 10 });
+  y += bannerH + 4;
 
   // Footer
   doc.setDrawColor(200, 200, 200);

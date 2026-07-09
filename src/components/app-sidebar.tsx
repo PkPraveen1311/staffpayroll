@@ -1,6 +1,6 @@
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import {
-  LayoutDashboard, Users, CalendarCheck, CalendarDays, CalendarOff, Plane, History, Wallet, FileText, Receipt, Plug, Settings, LogOut, Cake,
+  LayoutDashboard, Users, CalendarCheck, CalendarDays, CalendarOff, Plane, History, Wallet, FileText, Receipt, Plug, Settings, LogOut, Cake, HandCoins,
 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
@@ -20,6 +20,7 @@ const items = [
   { title: "Leave History", url: "/leave-history", icon: History },
   { title: "Payroll", url: "/payroll", icon: Wallet },
   { title: "Payslips", url: "/payslips", icon: FileText },
+  { title: "Advances", url: "/advances", icon: HandCoins },
   { title: "Challans", url: "/challans", icon: Receipt },
   { title: "Integrations", url: "/integrations", icon: Plug },
   { title: "Settings", url: "/settings", icon: Settings },

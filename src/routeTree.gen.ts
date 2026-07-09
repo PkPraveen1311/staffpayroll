@@ -24,6 +24,7 @@ import { Route as AppChallansRouteImport } from './routes/_app.challans'
 import { Route as AppCelebrationsRouteImport } from './routes/_app.celebrations'
 import { Route as AppAttendanceSheetRouteImport } from './routes/_app.attendance-sheet'
 import { Route as AppAttendanceRouteImport } from './routes/_app.attendance'
+import { Route as AppAdvancesRouteImport } from './routes/_app.advances'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -99,10 +100,16 @@ const AppAttendanceRoute = AppAttendanceRouteImport.update({
   path: '/attendance',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAdvancesRoute = AppAdvancesRouteImport.update({
+  id: '/advances',
+  path: '/advances',
+  getParentRoute: () => AppRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/login': typeof LoginRoute
+  '/advances': typeof AppAdvancesRoute
   '/attendance': typeof AppAttendanceRoute
   '/attendance-sheet': typeof AppAttendanceSheetRoute
   '/celebrations': typeof AppCelebrationsRoute
@@ -118,6 +125,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
+  '/advances': typeof AppAdvancesRoute
   '/attendance': typeof AppAttendanceRoute
   '/attendance-sheet': typeof AppAttendanceSheetRoute
   '/celebrations': typeof AppCelebrationsRoute
@@ -136,6 +144,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
+  '/_app/advances': typeof AppAdvancesRoute
   '/_app/attendance': typeof AppAttendanceRoute
   '/_app/attendance-sheet': typeof AppAttendanceSheetRoute
   '/_app/celebrations': typeof AppCelebrationsRoute
@@ -155,6 +164,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/login'
+    | '/advances'
     | '/attendance'
     | '/attendance-sheet'
     | '/celebrations'
@@ -170,6 +180,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/login'
+    | '/advances'
     | '/attendance'
     | '/attendance-sheet'
     | '/celebrations'
@@ -187,6 +198,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/_app'
     | '/login'
+    | '/_app/advances'
     | '/_app/attendance'
     | '/_app/attendance-sheet'
     | '/_app/celebrations'
@@ -314,10 +326,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAttendanceRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/advances': {
+      id: '/_app/advances'
+      path: '/advances'
+      fullPath: '/advances'
+      preLoaderRoute: typeof AppAdvancesRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
 interface AppRouteChildren {
+  AppAdvancesRoute: typeof AppAdvancesRoute
   AppAttendanceRoute: typeof AppAttendanceRoute
   AppAttendanceSheetRoute: typeof AppAttendanceSheetRoute
   AppCelebrationsRoute: typeof AppCelebrationsRoute
@@ -334,6 +354,7 @@ interface AppRouteChildren {
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppAdvancesRoute: AppAdvancesRoute,
   AppAttendanceRoute: AppAttendanceRoute,
   AppAttendanceSheetRoute: AppAttendanceSheetRoute,
   AppCelebrationsRoute: AppCelebrationsRoute,
