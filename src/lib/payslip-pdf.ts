@@ -1,6 +1,6 @@
 import { jsPDF } from "jspdf";
 import logoAsset from "@/assets/pehchaan-logo.png.asset.json";
-import { fmtINR } from "@/lib/format";
+
 
 let logoDataCache: string | null = null;
 async function getLogoData(): Promise<string | null> {
