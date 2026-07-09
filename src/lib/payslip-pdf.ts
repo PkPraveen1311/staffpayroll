@@ -21,7 +21,32 @@ async function getLogoData(): Promise<string | null> {
   }
 }
 
-const money = (n: any) => fmtINR(Number(n ?? 0));
+const money = (n: any) => {
+  const v = Number(n ?? 0);
+  return "Rs. " + new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 }).format(v);
+};
+
+function numberToWordsIndian(num: number): string {
+  num = Math.round(num);
+  if (num === 0) return "Zero Rupees Only";
+  const a = ["","One","Two","Three","Four","Five","Six","Seven","Eight","Nine","Ten","Eleven","Twelve","Thirteen","Fourteen","Fifteen","Sixteen","Seventeen","Eighteen","Nineteen"];
+  const b = ["","","Twenty","Thirty","Forty","Fifty","Sixty","Seventy","Eighty","Ninety"];
+  const twoDigit = (n: number): string => n < 20 ? a[n] : b[Math.floor(n/10)] + (n%10 ? " " + a[n%10] : "");
+  const threeDigit = (n: number): string => {
+    const h = Math.floor(n/100), r = n%100;
+    return (h ? a[h] + " Hundred" + (r ? " " : "") : "") + (r ? twoDigit(r) : "");
+  };
+  let n = num, out = "";
+  const crore = Math.floor(n / 10000000); n %= 10000000;
+  const lakh = Math.floor(n / 100000); n %= 100000;
+  const thousand = Math.floor(n / 1000); n %= 1000;
+  const rest = n;
+  if (crore) out += twoDigit(crore) + " Crore ";
+  if (lakh) out += twoDigit(lakh) + " Lakh ";
+  if (thousand) out += twoDigit(thousand) + " Thousand ";
+  if (rest) out += threeDigit(rest);
+  return out.trim().replace(/\s+/g, " ") + " Rupees Only";
+}
 
 export async function generatePayslipPdf(slip: any, period: string) {
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
