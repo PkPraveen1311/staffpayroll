@@ -218,19 +218,24 @@ export async function generatePayslipPdf(slip: any, period: string) {
   y += 15;
 
   // Net Pay banner
+  const bannerH = 26;
   doc.setFillColor(34, 139, 130);
-  doc.rect(M, y, W - 2 * M, 18, "F");
+  doc.rect(M, y, W - 2 * M, bannerH, "F");
   doc.setTextColor(255, 255, 255);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
   doc.text("NET PAY", M + 5, y + 7);
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(20);
-  doc.text(money(net), W - M - 5, y + 12, { align: "right" });
-  doc.setFontSize(8);
+  doc.setFontSize(18);
+  doc.text(money(net), W - M - 5, y + 11, { align: "right" });
+  doc.setFontSize(7.5);
   doc.setFont("helvetica", "normal");
-  doc.text(`(Gross ${money(slip.gross)} + Incentive ${money(slip.incentive ?? 0)} − Deductions ${money(totalDed)})`, M + 5, y + 14);
-  y += 22;
+  doc.text(`(Gross ${money(slip.gross)} + Incentive ${money(slip.incentive ?? 0)} - Deductions ${money(totalDed)})`, M + 5, y + 13, { maxWidth: W - 2 * M - 10 });
+  doc.setFont("helvetica", "italic");
+  doc.setFontSize(9);
+  const words = "In words: " + numberToWordsIndian(net);
+  doc.text(words, M + 5, y + 21, { maxWidth: W - 2 * M - 10 });
+  y += bannerH + 4;
 
   // Footer
   doc.setDrawColor(200, 200, 200);
