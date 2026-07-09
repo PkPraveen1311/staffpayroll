@@ -148,7 +148,7 @@ export async function generatePayslipPdf(slip: any, period: string) {
     doc.setFontSize(9.5);
     doc.text(title, x + 3, ty + 5);
     doc.setTextColor(255, 255, 255);
-    doc.text("Amount (₹)", x + tableW - 3, ty + 5, { align: "right" });
+    doc.text("Amount (Rs.)", x + tableW - 3, ty + 5, { align: "right" });
     ty += 7;
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
