@@ -14,6 +14,44 @@ export type Database = {
   }
   public: {
     Tables: {
+      advance_repayments: {
+        Row: {
+          advance_id: string
+          amount: number
+          created_at: string
+          id: string
+          notes: string | null
+          repaid_on: string
+          updated_at: string
+        }
+        Insert: {
+          advance_id: string
+          amount: number
+          created_at?: string
+          id?: string
+          notes?: string | null
+          repaid_on?: string
+          updated_at?: string
+        }
+        Update: {
+          advance_id?: string
+          amount?: number
+          created_at?: string
+          id?: string
+          notes?: string | null
+          repaid_on?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "advance_repayments_advance_id_fkey"
+            columns: ["advance_id"]
+            isOneToOne: false
+            referencedRelation: "employee_advances"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       allowed_week_offs: {
         Row: {
           allowed: number
@@ -75,6 +113,44 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "attendance_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      employee_advances: {
+        Row: {
+          amount: number
+          created_at: string
+          employee_id: string
+          given_on: string
+          id: string
+          notes: string | null
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          employee_id: string
+          given_on?: string
+          id?: string
+          notes?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          employee_id?: string
+          given_on?: string
+          id?: string
+          notes?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_advances_employee_id_fkey"
             columns: ["employee_id"]
             isOneToOne: false
             referencedRelation: "employees"
