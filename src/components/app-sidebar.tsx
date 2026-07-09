@@ -20,6 +20,7 @@ const items = [
   { title: "Leave History", url: "/leave-history", icon: History },
   { title: "Payroll", url: "/payroll", icon: Wallet },
   { title: "Payslips", url: "/payslips", icon: FileText },
+  { title: "Advances", url: "/advances", icon: HandCoins },
   { title: "Challans", url: "/challans", icon: Receipt },
   { title: "Integrations", url: "/integrations", icon: Plug },
   { title: "Settings", url: "/settings", icon: Settings },
