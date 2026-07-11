@@ -129,6 +129,43 @@ function AdvancesPage() {
     qc.invalidateQueries({ queryKey: ["advance-repayments"] });
   };
 
+  // Employee-wise outstanding (across all their advances), ordered by given_on ASC for FIFO allocation
+  const empOutstanding = useMemo(() => {
+    const m = new Map<string, { advId: string; given_on: string; outstanding: number }[]>();
+    const sorted = [...advances].sort((a, b) => a.given_on.localeCompare(b.given_on));
+    sorted.forEach(a => {
+      const reps = repayByAdv.get(a.id) ?? [];
+      const repaid = reps.reduce((s, r) => s + Number(r.amount), 0);
+      const out = Math.max(0, Number(a.amount) - repaid);
+      if (out <= 0) return;
+      if (!m.has(a.employee_id)) m.set(a.employee_id, []);
+      m.get(a.employee_id)!.push({ advId: a.id, given_on: a.given_on, outstanding: out });
+    });
+    return m;
+  }, [advances, repayByAdv]);
+
+  const addDeposit = async () => {
+    if (!depEmpId || !depAmt) { toast.error("Employee and amount required"); return; }
+    let remaining = Number(depAmt);
+    if (remaining <= 0) { toast.error("Amount must be greater than 0"); return; }
+    const buckets = empOutstanding.get(depEmpId) ?? [];
+    const totalOut = buckets.reduce((s, b) => s + b.outstanding, 0);
+    if (totalOut <= 0) { toast.error("No outstanding advance for this employee"); return; }
+    if (remaining > totalOut) { toast.error(`Deposit exceeds outstanding (${fmtINR(totalOut)})`); return; }
+    const inserts: { advance_id: string; amount: number; repaid_on: string; notes: string | null }[] = [];
+    for (const b of buckets) {
+      if (remaining <= 0) break;
+      const take = Math.min(b.outstanding, remaining);
+      inserts.push({ advance_id: b.advId, amount: take, repaid_on: depDate, notes: depNotes ? `Deposit: ${depNotes}` : "Deposit" });
+      remaining -= take;
+    }
+    const { error } = await supabase.from("advance_repayments").insert(inserts);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Deposit recorded");
+    setDepositOpen(false); setDepEmpId(""); setDepAmt(""); setDepNotes("");
+    qc.invalidateQueries({ queryKey: ["advance-repayments"] });
+  };
+
   const deleteAdvance = async (id: string) => {
     const { error } = await supabase.from("employee_advances").delete().eq("id", id);
     if (error) { toast.error(error.message); return; }
