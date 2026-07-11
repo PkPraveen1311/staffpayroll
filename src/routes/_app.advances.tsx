@@ -346,6 +346,50 @@ function AdvancesPage() {
         <div className="flex gap-2">
           <Button variant="outline" onClick={exportPdf}><FileDown className="h-4 w-4 mr-1" /> PDF</Button>
           <Button variant="outline" onClick={exportXlsx}><FileSpreadsheet className="h-4 w-4 mr-1" /> Excel</Button>
+          <Dialog open={depositOpen} onOpenChange={(o) => { setDepositOpen(o); if (o) { setDepEmpId(""); setDepAmt(""); setDepDate(new Date().toISOString().slice(0, 10)); setDepNotes(""); } }}>
+            <DialogTrigger asChild>
+              <Button variant="outline" className="border-emerald-500/60 text-emerald-600 hover:text-emerald-700 dark:text-emerald-400"><Wallet className="h-4 w-4 mr-1" /> New Deposit</Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader><DialogTitle>Record employee deposit</DialogTitle></DialogHeader>
+              <div className="space-y-3">
+                <p className="text-xs text-muted-foreground">Use this when an employee deposits money back after receiving salary. The amount is auto-adjusted against their outstanding advances (oldest first).</p>
+                <div className="space-y-1.5">
+                  <Label>Employee</Label>
+                  <Select value={depEmpId} onValueChange={setDepEmpId}>
+                    <SelectTrigger><SelectValue placeholder="Select employee" /></SelectTrigger>
+                    <SelectContent>
+                      {employees.map(e => {
+                        const out = (empOutstanding.get(e.id) ?? []).reduce((s, b) => s + b.outstanding, 0);
+                        return <SelectItem key={e.id} value={e.id} disabled={out <= 0}>{e.full_name} ({e.employee_code}) — {fmtINR(out)}</SelectItem>;
+                      })}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {depEmpId && (
+                  <div className="text-sm text-muted-foreground">Outstanding: <span className="font-semibold text-foreground">{fmtINR((empOutstanding.get(depEmpId) ?? []).reduce((s, b) => s + b.outstanding, 0))}</span></div>
+                )}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label>Amount (₹)</Label>
+                    <Input type="number" min={1} value={depAmt} onChange={e => setDepAmt(e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Deposit date</Label>
+                    <Input type="date" value={depDate} onChange={e => setDepDate(e.target.value)} />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Notes</Label>
+                  <Input value={depNotes} onChange={e => setDepNotes(e.target.value)} placeholder="Optional (e.g., Cash deposit post May salary)" />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setDepositOpen(false)}>Cancel</Button>
+                <Button onClick={addDeposit} className="bg-emerald-600 hover:bg-emerald-700 text-white">Save deposit</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
           <Dialog open={addOpen} onOpenChange={setAddOpen}>
             <DialogTrigger asChild>
               <Button className="bg-gradient-primary text-primary-foreground"><Plus className="h-4 w-4 mr-1" /> New Advance</Button>
