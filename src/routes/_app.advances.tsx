@@ -13,7 +13,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { fmtINR, monthName } from "@/lib/format";
-import { Plus, Trash2, FileDown, FileSpreadsheet, IndianRupee, HandCoins } from "lucide-react";
+import { Plus, Trash2, FileDown, FileSpreadsheet, IndianRupee, HandCoins, Wallet } from "lucide-react";
 import { jsPDF } from "jspdf";
 import ExcelJS from "exceljs";
 
