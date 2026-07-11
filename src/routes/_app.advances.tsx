@@ -13,7 +13,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { fmtINR, monthName } from "@/lib/format";
-import { Plus, Trash2, FileDown, FileSpreadsheet, IndianRupee, HandCoins } from "lucide-react";
+import { Plus, Trash2, FileDown, FileSpreadsheet, IndianRupee, HandCoins, Wallet } from "lucide-react";
 import { jsPDF } from "jspdf";
 import ExcelJS from "exceljs";
 
@@ -36,6 +36,13 @@ function AdvancesPage() {
   const [repayAmt, setRepayAmt] = useState("");
   const [repayDate, setRepayDate] = useState(new Date().toISOString().slice(0, 10));
   const [repayNotes, setRepayNotes] = useState("");
+
+  // Deposit (post-salary employee deposit) — auto-allocated FIFO across outstanding advances
+  const [depositOpen, setDepositOpen] = useState(false);
+  const [depEmpId, setDepEmpId] = useState("");
+  const [depAmt, setDepAmt] = useState("");
+  const [depDate, setDepDate] = useState(new Date().toISOString().slice(0, 10));
+  const [depNotes, setDepNotes] = useState("");
 
   const { data: employees = [] } = useQuery<Employee[]>({
     queryKey: ["employees-min-adv"],
@@ -119,6 +126,43 @@ function AdvancesPage() {
     if (error) { toast.error(error.message); return; }
     toast.success("Repayment recorded");
     setRepayOpen(null); setRepayAmt(""); setRepayNotes("");
+    qc.invalidateQueries({ queryKey: ["advance-repayments"] });
+  };
+
+  // Employee-wise outstanding (across all their advances), ordered by given_on ASC for FIFO allocation
+  const empOutstanding = useMemo(() => {
+    const m = new Map<string, { advId: string; given_on: string; outstanding: number }[]>();
+    const sorted = [...advances].sort((a, b) => a.given_on.localeCompare(b.given_on));
+    sorted.forEach(a => {
+      const reps = repayByAdv.get(a.id) ?? [];
+      const repaid = reps.reduce((s, r) => s + Number(r.amount), 0);
+      const out = Math.max(0, Number(a.amount) - repaid);
+      if (out <= 0) return;
+      if (!m.has(a.employee_id)) m.set(a.employee_id, []);
+      m.get(a.employee_id)!.push({ advId: a.id, given_on: a.given_on, outstanding: out });
+    });
+    return m;
+  }, [advances, repayByAdv]);
+
+  const addDeposit = async () => {
+    if (!depEmpId || !depAmt) { toast.error("Employee and amount required"); return; }
+    let remaining = Number(depAmt);
+    if (remaining <= 0) { toast.error("Amount must be greater than 0"); return; }
+    const buckets = empOutstanding.get(depEmpId) ?? [];
+    const totalOut = buckets.reduce((s, b) => s + b.outstanding, 0);
+    if (totalOut <= 0) { toast.error("No outstanding advance for this employee"); return; }
+    if (remaining > totalOut) { toast.error(`Deposit exceeds outstanding (${fmtINR(totalOut)})`); return; }
+    const inserts: { advance_id: string; amount: number; repaid_on: string; notes: string | null }[] = [];
+    for (const b of buckets) {
+      if (remaining <= 0) break;
+      const take = Math.min(b.outstanding, remaining);
+      inserts.push({ advance_id: b.advId, amount: take, repaid_on: depDate, notes: depNotes ? `Deposit: ${depNotes}` : "Deposit" });
+      remaining -= take;
+    }
+    const { error } = await supabase.from("advance_repayments").insert(inserts);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Deposit recorded");
+    setDepositOpen(false); setDepEmpId(""); setDepAmt(""); setDepNotes("");
     qc.invalidateQueries({ queryKey: ["advance-repayments"] });
   };
 
@@ -302,6 +346,50 @@ function AdvancesPage() {
         <div className="flex gap-2">
           <Button variant="outline" onClick={exportPdf}><FileDown className="h-4 w-4 mr-1" /> PDF</Button>
           <Button variant="outline" onClick={exportXlsx}><FileSpreadsheet className="h-4 w-4 mr-1" /> Excel</Button>
+          <Dialog open={depositOpen} onOpenChange={(o) => { setDepositOpen(o); if (o) { setDepEmpId(""); setDepAmt(""); setDepDate(new Date().toISOString().slice(0, 10)); setDepNotes(""); } }}>
+            <DialogTrigger asChild>
+              <Button variant="outline" className="border-emerald-500/60 text-emerald-600 hover:text-emerald-700 dark:text-emerald-400"><Wallet className="h-4 w-4 mr-1" /> New Deposit</Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader><DialogTitle>Record employee deposit</DialogTitle></DialogHeader>
+              <div className="space-y-3">
+                <p className="text-xs text-muted-foreground">Use this when an employee deposits money back after receiving salary. The amount is auto-adjusted against their outstanding advances (oldest first).</p>
+                <div className="space-y-1.5">
+                  <Label>Employee</Label>
+                  <Select value={depEmpId} onValueChange={setDepEmpId}>
+                    <SelectTrigger><SelectValue placeholder="Select employee" /></SelectTrigger>
+                    <SelectContent>
+                      {employees.map(e => {
+                        const out = (empOutstanding.get(e.id) ?? []).reduce((s, b) => s + b.outstanding, 0);
+                        return <SelectItem key={e.id} value={e.id} disabled={out <= 0}>{e.full_name} ({e.employee_code}) — {fmtINR(out)}</SelectItem>;
+                      })}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {depEmpId && (
+                  <div className="text-sm text-muted-foreground">Outstanding: <span className="font-semibold text-foreground">{fmtINR((empOutstanding.get(depEmpId) ?? []).reduce((s, b) => s + b.outstanding, 0))}</span></div>
+                )}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label>Amount (₹)</Label>
+                    <Input type="number" min={1} value={depAmt} onChange={e => setDepAmt(e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Deposit date</Label>
+                    <Input type="date" value={depDate} onChange={e => setDepDate(e.target.value)} />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Notes</Label>
+                  <Input value={depNotes} onChange={e => setDepNotes(e.target.value)} placeholder="Optional (e.g., Cash deposit post May salary)" />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setDepositOpen(false)}>Cancel</Button>
+                <Button onClick={addDeposit} className="bg-emerald-600 hover:bg-emerald-700 text-white">Save deposit</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
           <Dialog open={addOpen} onOpenChange={setAddOpen}>
             <DialogTrigger asChild>
               <Button className="bg-gradient-primary text-primary-foreground"><Plus className="h-4 w-4 mr-1" /> New Advance</Button>
