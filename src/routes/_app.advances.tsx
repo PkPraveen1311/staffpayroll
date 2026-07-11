@@ -37,6 +37,13 @@ function AdvancesPage() {
   const [repayDate, setRepayDate] = useState(new Date().toISOString().slice(0, 10));
   const [repayNotes, setRepayNotes] = useState("");
 
+  // Deposit (post-salary employee deposit) — auto-allocated FIFO across outstanding advances
+  const [depositOpen, setDepositOpen] = useState(false);
+  const [depEmpId, setDepEmpId] = useState("");
+  const [depAmt, setDepAmt] = useState("");
+  const [depDate, setDepDate] = useState(new Date().toISOString().slice(0, 10));
+  const [depNotes, setDepNotes] = useState("");
+
   const { data: employees = [] } = useQuery<Employee[]>({
     queryKey: ["employees-min-adv"],
     queryFn: async () => {
