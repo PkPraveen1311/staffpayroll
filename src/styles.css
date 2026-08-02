@@ -69,7 +69,7 @@
   --secondary-foreground: oklch(0.97 0.005 250);
 
   --muted: oklch(0.26 0.022 265);
-  --muted-foreground: oklch(0.7 0.02 260);
+  --muted-foreground: oklch(0.8 0.02 260);
 
   --accent: oklch(0.65 0.22 295);              /* violet accent */
   --accent-foreground: oklch(0.98 0.005 250);
