@@ -37,6 +37,38 @@ function ChallansPage() {
 
   const run: any = runs.find((r: any) => r.id === effectiveRun);
 
+  const { data: tdsPayments = [] } = useQuery({
+    queryKey: ["commission-payments-challan", run?.year, run?.month],
+    queryFn: async () => {
+      if (!run) return [];
+      const start = new Date(run.year, run.month - 1, 1).toISOString().slice(0, 10);
+      const end = new Date(run.year, run.month, 0).toISOString().slice(0, 10);
+      const { data } = await supabase
+        .from("commission_payments")
+        .select("*, commission_agents(full_name, agent_code, pan)")
+        .gte("paid_on", start)
+        .lte("paid_on", end)
+        .order("paid_on");
+      return data ?? [];
+    },
+    enabled: !!run,
+  });
+
+  const tdsRows = tdsPayments
+    .filter((p: any) => Number(p.tds_amount) > 0)
+    .map((p: any) => ({
+      id: p.id,
+      date: p.paid_on,
+      name: p.commission_agents?.full_name ?? "—",
+      code: p.commission_agents?.agent_code ?? "",
+      pan: p.commission_agents?.pan ?? "",
+      gross: Number(p.gross_amount),
+      rate: Number(p.tds_rate),
+      tds: Number(p.tds_amount),
+      net: Number(p.net_amount),
+    }));
+
+
   const ageOn = (dob?: string | null) => {
     if (!dob || !run) return 0;
     const d = new Date(dob);
