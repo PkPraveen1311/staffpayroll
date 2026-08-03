@@ -10,7 +10,7 @@ export const Route = createFileRoute("/_app/attendance-sheet")({
   component: AttendanceSheetPage,
 });
 
-type StatusKey = "present" | "absent" | "half-day" | "leave" | "week-off";
+type StatusKey = "present" | "absent" | "half-day" | "leave" | "week-off" | "tour";
 
 const STATUS_SHORT: Record<StatusKey, string> = {
   present: "P",
@@ -18,6 +18,7 @@ const STATUS_SHORT: Record<StatusKey, string> = {
   "half-day": "H",
   leave: "L",
   "week-off": "W",
+  tour: "T",
 };
 
 const STATUS_COLOR: Record<StatusKey, string> = {
@@ -26,6 +27,7 @@ const STATUS_COLOR: Record<StatusKey, string> = {
   "half-day": "text-amber-600 print:text-black",
   leave: "text-sky-600 print:text-black",
   "week-off": "text-violet-600 print:text-black",
+  tour: "text-cyan-600 print:text-black",
 };
 
 const MONTHS = [
@@ -139,7 +141,7 @@ function AttendanceSheetPage() {
   const rows = useMemo(() => {
     return employees.map((e) => {
       const inner = matrix.get(e.id);
-      const counts = { P: 0, A: 0, H: 0, L: 0, W: 0 };
+      const counts = { P: 0, A: 0, H: 0, L: 0, W: 0, T: 0 };
       for (const d of days) {
         const ds = `${year}-${pad(month)}-${pad(d)}`;
         const s = inner?.get(ds);
@@ -149,6 +151,7 @@ function AttendanceSheetPage() {
         else if (s === "half-day") counts.H++;
         else if (s === "leave") counts.L++;
         else if (s === "week-off") counts.W++;
+        else if (s === "tour") counts.T++;
       }
       const allowed = allowedMap.has(e.id) ? (allowedMap.get(e.id) ?? 0) : 4;
       const countedWeekOff = Math.min(counts.W, allowed);
@@ -158,7 +161,7 @@ function AttendanceSheetPage() {
       const countedLeaves = counts.L > 0 ? Math.min(counts.L, approvedLeaves) : approvedLeaves;
       const net = Math.min(
         daysInMonth,
-        counts.P + countedLeaves + countedWeekOff + counts.H / 2 + halfDayCredit,
+        counts.P + counts.T + countedLeaves + countedWeekOff + counts.H / 2 + halfDayCredit,
       );
       return { emp: e, counts, net };
     });
@@ -243,6 +246,7 @@ function AttendanceSheetPage() {
                 <th className="border border-border px-1 py-1 text-center w-7">H</th>
                 <th className="border border-border px-1 py-1 text-center w-7">L</th>
                 <th className="border border-border px-1 py-1 text-center w-7">W</th>
+                <th className="border border-border px-1 py-1 text-center w-7">T</th>
                 <th className="border border-border px-1 py-1 text-center w-10 font-bold">Net</th>
               </tr>
             </thead>
@@ -273,13 +277,14 @@ function AttendanceSheetPage() {
                     <td className="border border-border px-1 py-0.5 text-center text-amber-600 print:text-black font-semibold">{counts.H}</td>
                     <td className="border border-border px-1 py-0.5 text-center text-sky-600 print:text-black font-semibold">{counts.L}</td>
                     <td className="border border-border px-1 py-0.5 text-center text-violet-600 print:text-black font-semibold">{counts.W}</td>
+                    <td className="border border-border px-1 py-0.5 text-center text-cyan-600 print:text-black font-semibold">{counts.T}</td>
                     <td className="border border-border px-1 py-0.5 text-center font-bold">{net}</td>
                   </tr>
                 );
               })}
               {rows.length === 0 && (
                 <tr>
-                  <td colSpan={days.length + 8} className="text-center py-8 text-muted-foreground">
+                  <td colSpan={days.length + 9} className="text-center py-8 text-muted-foreground">
                     No active employees.
                   </td>
                 </tr>
@@ -294,6 +299,7 @@ function AttendanceSheetPage() {
           <span><b className="text-amber-600 print:text-black">H</b> Half-day</span>
           <span><b className="text-sky-600 print:text-black">L</b> Leave</span>
           <span><b className="text-violet-600 print:text-black">W</b> Week-off</span>
+          <span><b className="text-cyan-600 print:text-black">T</b> Tour</span>
           <span>- No record</span>
         </div>
       </div>

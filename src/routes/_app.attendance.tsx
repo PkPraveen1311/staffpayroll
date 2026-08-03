@@ -10,14 +10,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { Calendar, Check, X, Clock, Plane, CalendarDays, Search, Eraser, ChevronLeft, ChevronRight } from "lucide-react";
+import { Calendar, Check, X, Clock, Plane, CalendarDays, Search, Eraser, ChevronLeft, ChevronRight, Briefcase } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 export const Route = createFileRoute("/_app/attendance")({
   component: AttendancePage,
 });
 
-type StatusKey = "present" | "absent" | "half-day" | "leave" | "week-off";
+type StatusKey = "present" | "absent" | "half-day" | "leave" | "week-off" | "tour";
 
 const STATUS_META: Record<StatusKey, { label: string; short: string; hours: number; icon: any; cls: string; badge: "default" | "destructive" | "secondary" | "outline" }> = {
   present:    { label: "Present",  short: "P", hours: 8, icon: Check,        cls: "bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25 border-emerald-500/30", badge: "default" },
@@ -25,9 +25,10 @@ const STATUS_META: Record<StatusKey, { label: string; short: string; hours: numb
   "half-day": { label: "Half-day", short: "H", hours: 4, icon: Clock,        cls: "bg-amber-500/15 text-amber-400 hover:bg-amber-500/25 border-amber-500/30",       badge: "secondary" },
   leave:      { label: "Leave",    short: "L", hours: 0, icon: Plane,        cls: "bg-sky-500/15 text-sky-400 hover:bg-sky-500/25 border-sky-500/30",               badge: "secondary" },
   "week-off": { label: "Week-off", short: "W", hours: 8, icon: CalendarDays, cls: "bg-violet-500/15 text-violet-400 hover:bg-violet-500/25 border-violet-500/30",   badge: "secondary" },
+  tour:       { label: "Tour",     short: "T", hours: 8, icon: Briefcase,    cls: "bg-cyan-500/15 text-cyan-400 hover:bg-cyan-500/25 border-cyan-500/30",           badge: "default" },
 };
 
-const STATUS_ORDER: StatusKey[] = ["present", "absent", "half-day", "leave", "week-off"];
+const STATUS_ORDER: StatusKey[] = ["present", "absent", "half-day", "leave", "week-off", "tour"];
 
 function AttendancePage() {
   const qc = useQueryClient();
@@ -79,7 +80,7 @@ function AttendancePage() {
   }, [employees, search, dept]);
 
   const counts = useMemo(() => {
-    const c: Record<string, number> = { present: 0, absent: 0, "half-day": 0, leave: 0, "week-off": 0, unmarked: 0 };
+    const c: Record<string, number> = { present: 0, absent: 0, "half-day": 0, leave: 0, "week-off": 0, tour: 0, unmarked: 0 };
     employees.forEach((e: any) => {
       const r: any = recMap.get(e.id);
       if (!r) c.unmarked++;
@@ -168,7 +169,7 @@ function AttendancePage() {
           </div>
 
           {/* Summary cards */}
-          <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-7 gap-3">
             {STATUS_ORDER.map((s) => {
               const m = STATUS_META[s];
               const Icon = m.icon;
@@ -340,7 +341,7 @@ function MonthlyView({ employees }: { employees: any[] }) {
   const byDate = useMemo(() => new Map(monthRecs.map((r: any) => [r.date, r])), [monthRecs]);
 
   const totals = useMemo(() => {
-    const t: Record<string, number> = { present: 0, absent: 0, "half-day": 0, leave: 0, "week-off": 0, unmarked: 0, hours: 0 };
+    const t: Record<string, number> = { present: 0, absent: 0, "half-day": 0, leave: 0, "week-off": 0, tour: 0, unmarked: 0, hours: 0 };
     for (let d = 1; d <= daysInMonth; d++) {
       const key = `${year}-${String(month).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
       const r: any = byDate.get(key);
@@ -408,7 +409,7 @@ function MonthlyView({ employees }: { employees: any[] }) {
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-2 md:grid-cols-7 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-8 gap-3">
         {STATUS_ORDER.map((s) => {
           const m = STATUS_META[s];
           return (

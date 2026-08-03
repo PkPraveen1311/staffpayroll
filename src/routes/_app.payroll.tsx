@@ -112,7 +112,7 @@ function PayrollPage() {
           leaveDates: new Set<string>(),
           halfDates: new Set<string>(),
         };
-        if (a.status === "present") c.presentDates.add(a.date);
+        if (a.status === "present" || a.status === "tour") c.presentDates.add(a.date);
         else if (a.status === "week-off") c.weekOffDates.add(a.date);
         else if (a.status === "leave") c.leaveDates.add(a.date);
         else if (a.status === "half-day") c.halfDates.add(a.date);
