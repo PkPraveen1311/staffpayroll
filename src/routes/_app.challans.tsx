@@ -156,7 +156,7 @@ function ChallansPage() {
           <Button onClick={exportPF} variant="outline" disabled={!pfRows.length}><FileSpreadsheet className="h-4 w-4 mr-1" />PF Excel</Button>
           <Button onClick={exportESI} variant="outline" disabled={!esiRows.length}><FileSpreadsheet className="h-4 w-4 mr-1" />ESI Excel</Button>
           <Button onClick={exportTDS} variant="outline" disabled={!tdsRows.length}><FileSpreadsheet className="h-4 w-4 mr-1" />TDS Excel</Button>
-
+          <Button onClick={() => window.print()} variant="outline"><Printer className="h-4 w-4 mr-1" />Print</Button>
         </div>
       </div>
 
