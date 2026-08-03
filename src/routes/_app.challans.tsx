@@ -131,12 +131,17 @@ function ChallansPage() {
     "EE 0.75%": r.ee, "ER 3.25%": r.er, Total: r.total,
   })), "ESI");
 
+  const exportTDS = () => exportToXlsx(`TDS_194H_Challan_${run ? monthName(run.month) + "_" + run.year : ""}.xlsx`, tdsRows.map(r => ({
+    Date: r.date, Code: r.code, Agent: r.name, PAN: r.pan || "NOT AVAILABLE",
+    "Commission Paid": r.gross, "TDS %": r.rate, "TDS u/s 194H": r.tds, "Net Paid": r.net,
+  })), "TDS 194H");
+
   return (
     <div className="space-y-6 print:space-y-3">
       <div className="flex items-end justify-between flex-wrap gap-4 no-print print:hidden">
         <div>
           <h1 className="text-3xl font-bold">Challans</h1>
-          <p className="text-sm text-muted-foreground">PF (EPFO) & ESI statutory challan summaries.</p>
+          <p className="text-sm text-muted-foreground">PF (EPFO), ESI & TDS (Section 194H) statutory challan summaries.</p>
         </div>
         <div className="flex items-end gap-3 flex-wrap">
           <div className="space-y-1.5">
