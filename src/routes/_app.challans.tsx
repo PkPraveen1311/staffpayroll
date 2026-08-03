@@ -260,6 +260,51 @@ function ChallansPage() {
           </Table>
         </CardContent>
       </Card>
+
+      <Card className="bg-gradient-card border-border/60 shadow-elegant">
+        <CardHeader>
+          <CardTitle>TDS Challan — Section 194H (Commission) — {run ? `${monthName(run.month)} ${run.year}` : "—"}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Date</TableHead>
+                <TableHead>Agent</TableHead>
+                <TableHead>PAN</TableHead>
+                <TableHead className="text-right">Commission Paid</TableHead>
+                <TableHead className="text-right">Rate</TableHead>
+                <TableHead className="text-right">TDS u/s 194H</TableHead>
+                <TableHead className="text-right">Net Paid</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {tdsRows.length === 0 ? (
+                <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-6">No commission payouts with TDS in this month.</TableCell></TableRow>
+              ) : tdsRows.map((r) => (
+                <TableRow key={r.id}>
+                  <TableCell>{new Date(r.date).toLocaleDateString("en-IN")}</TableCell>
+                  <TableCell><div className="font-medium">{r.name}</div><div className="text-xs text-muted-foreground font-mono">{r.code}</div></TableCell>
+                  <TableCell className="font-mono text-xs">{r.pan || "NOT AVAILABLE"}</TableCell>
+                  <TableCell className="text-right">{fmtINR(r.gross)}</TableCell>
+                  <TableCell className="text-right">{r.rate}%</TableCell>
+                  <TableCell className="text-right">{fmtINR(r.tds)}</TableCell>
+                  <TableCell className="text-right font-semibold">{fmtINR(r.net)}</TableCell>
+                </TableRow>
+              ))}
+              {tdsRows.length > 0 && (
+                <TableRow className="border-t-2 border-border bg-muted/40">
+                  <TableCell className="font-bold" colSpan={3}>TOTAL</TableCell>
+                  <TableCell className="text-right font-bold">{fmtINR(sum(tdsRows, "gross"))}</TableCell>
+                  <TableCell />
+                  <TableCell className="text-right font-bold text-primary">{fmtINR(sum(tdsRows, "tds"))}</TableCell>
+                  <TableCell className="text-right font-bold">{fmtINR(sum(tdsRows, "net"))}</TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
       </div>
     </div>
   );
