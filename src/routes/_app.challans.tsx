@@ -37,6 +37,38 @@ function ChallansPage() {
 
   const run: any = runs.find((r: any) => r.id === effectiveRun);
 
+  const { data: tdsPayments = [] } = useQuery({
+    queryKey: ["commission-payments-challan", run?.year, run?.month],
+    queryFn: async () => {
+      if (!run) return [];
+      const start = new Date(run.year, run.month - 1, 1).toISOString().slice(0, 10);
+      const end = new Date(run.year, run.month, 0).toISOString().slice(0, 10);
+      const { data } = await supabase
+        .from("commission_payments")
+        .select("*, commission_agents(full_name, agent_code, pan)")
+        .gte("paid_on", start)
+        .lte("paid_on", end)
+        .order("paid_on");
+      return data ?? [];
+    },
+    enabled: !!run,
+  });
+
+  const tdsRows = tdsPayments
+    .filter((p: any) => Number(p.tds_amount) > 0)
+    .map((p: any) => ({
+      id: p.id,
+      date: p.paid_on,
+      name: p.commission_agents?.full_name ?? "—",
+      code: p.commission_agents?.agent_code ?? "",
+      pan: p.commission_agents?.pan ?? "",
+      gross: Number(p.gross_amount),
+      rate: Number(p.tds_rate),
+      tds: Number(p.tds_amount),
+      net: Number(p.net_amount),
+    }));
+
+
   const ageOn = (dob?: string | null) => {
     if (!dob || !run) return 0;
     const d = new Date(dob);
@@ -99,12 +131,17 @@ function ChallansPage() {
     "EE 0.75%": r.ee, "ER 3.25%": r.er, Total: r.total,
   })), "ESI");
 
+  const exportTDS = () => exportToXlsx(`TDS_194H_Challan_${run ? monthName(run.month) + "_" + run.year : ""}.xlsx`, tdsRows.map(r => ({
+    Date: r.date, Code: r.code, Agent: r.name, PAN: r.pan || "NOT AVAILABLE",
+    "Commission Paid": r.gross, "TDS %": r.rate, "TDS u/s 194H": r.tds, "Net Paid": r.net,
+  })), "TDS 194H");
+
   return (
     <div className="space-y-6 print:space-y-3">
       <div className="flex items-end justify-between flex-wrap gap-4 no-print print:hidden">
         <div>
           <h1 className="text-3xl font-bold">Challans</h1>
-          <p className="text-sm text-muted-foreground">PF (EPFO) & ESI statutory challan summaries.</p>
+          <p className="text-sm text-muted-foreground">PF (EPFO), ESI & TDS (Section 194H) statutory challan summaries.</p>
         </div>
         <div className="flex items-end gap-3 flex-wrap">
           <div className="space-y-1.5">
@@ -118,6 +155,7 @@ function ChallansPage() {
           </div>
           <Button onClick={exportPF} variant="outline" disabled={!pfRows.length}><FileSpreadsheet className="h-4 w-4 mr-1" />PF Excel</Button>
           <Button onClick={exportESI} variant="outline" disabled={!esiRows.length}><FileSpreadsheet className="h-4 w-4 mr-1" />ESI Excel</Button>
+          <Button onClick={exportTDS} variant="outline" disabled={!tdsRows.length}><FileSpreadsheet className="h-4 w-4 mr-1" />TDS Excel</Button>
           <Button onClick={() => window.print()} variant="outline"><Printer className="h-4 w-4 mr-1" />Print</Button>
         </div>
       </div>
@@ -216,6 +254,51 @@ function ChallansPage() {
                   <TableCell className="text-right font-bold">{fmtINR(sum(esiRows, "ee"))}</TableCell>
                   <TableCell className="text-right font-bold">{fmtINR(sum(esiRows, "er"))}</TableCell>
                   <TableCell className="text-right font-bold text-primary">{fmtINR(sum(esiRows, "total"))}</TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      <Card className="bg-gradient-card border-border/60 shadow-elegant">
+        <CardHeader>
+          <CardTitle>TDS Challan — Section 194H (Commission) — {run ? `${monthName(run.month)} ${run.year}` : "—"}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Date</TableHead>
+                <TableHead>Agent</TableHead>
+                <TableHead>PAN</TableHead>
+                <TableHead className="text-right">Commission Paid</TableHead>
+                <TableHead className="text-right">Rate</TableHead>
+                <TableHead className="text-right">TDS u/s 194H</TableHead>
+                <TableHead className="text-right">Net Paid</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {tdsRows.length === 0 ? (
+                <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-6">No commission payouts with TDS in this month.</TableCell></TableRow>
+              ) : tdsRows.map((r) => (
+                <TableRow key={r.id}>
+                  <TableCell>{new Date(r.date).toLocaleDateString("en-IN")}</TableCell>
+                  <TableCell><div className="font-medium">{r.name}</div><div className="text-xs text-muted-foreground font-mono">{r.code}</div></TableCell>
+                  <TableCell className="font-mono text-xs">{r.pan || "NOT AVAILABLE"}</TableCell>
+                  <TableCell className="text-right">{fmtINR(r.gross)}</TableCell>
+                  <TableCell className="text-right">{r.rate}%</TableCell>
+                  <TableCell className="text-right">{fmtINR(r.tds)}</TableCell>
+                  <TableCell className="text-right font-semibold">{fmtINR(r.net)}</TableCell>
+                </TableRow>
+              ))}
+              {tdsRows.length > 0 && (
+                <TableRow className="border-t-2 border-border bg-muted/40">
+                  <TableCell className="font-bold" colSpan={3}>TOTAL</TableCell>
+                  <TableCell className="text-right font-bold">{fmtINR(sum(tdsRows, "gross"))}</TableCell>
+                  <TableCell />
+                  <TableCell className="text-right font-bold text-primary">{fmtINR(sum(tdsRows, "tds"))}</TableCell>
+                  <TableCell className="text-right font-bold">{fmtINR(sum(tdsRows, "net"))}</TableCell>
                 </TableRow>
               )}
             </TableBody>

@@ -21,6 +21,7 @@ import { Route as AppLeavesRouteImport } from './routes/_app.leaves'
 import { Route as AppLeaveHistoryRouteImport } from './routes/_app.leave-history'
 import { Route as AppIntegrationsRouteImport } from './routes/_app.integrations'
 import { Route as AppEmployeesRouteImport } from './routes/_app.employees'
+import { Route as AppCommissionAgentsRouteImport } from './routes/_app.commission-agents'
 import { Route as AppChallansRouteImport } from './routes/_app.challans'
 import { Route as AppCelebrationsRouteImport } from './routes/_app.celebrations'
 import { Route as AppAttendanceSheetRouteImport } from './routes/_app.attendance-sheet'
@@ -86,6 +87,11 @@ const AppEmployeesRoute = AppEmployeesRouteImport.update({
   path: '/employees',
   getParentRoute: () => AppRoute,
 } as any)
+const AppCommissionAgentsRoute = AppCommissionAgentsRouteImport.update({
+  id: '/commission-agents',
+  path: '/commission-agents',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppChallansRoute = AppChallansRouteImport.update({
   id: '/challans',
   path: '/challans',
@@ -121,6 +127,7 @@ export interface FileRoutesByFullPath {
   '/attendance-sheet': typeof AppAttendanceSheetRoute
   '/celebrations': typeof AppCelebrationsRoute
   '/challans': typeof AppChallansRoute
+  '/commission-agents': typeof AppCommissionAgentsRoute
   '/employees': typeof AppEmployeesRoute
   '/integrations': typeof AppIntegrationsRoute
   '/leave-history': typeof AppLeaveHistoryRoute
@@ -138,6 +145,7 @@ export interface FileRoutesByTo {
   '/attendance-sheet': typeof AppAttendanceSheetRoute
   '/celebrations': typeof AppCelebrationsRoute
   '/challans': typeof AppChallansRoute
+  '/commission-agents': typeof AppCommissionAgentsRoute
   '/employees': typeof AppEmployeesRoute
   '/integrations': typeof AppIntegrationsRoute
   '/leave-history': typeof AppLeaveHistoryRoute
@@ -158,6 +166,7 @@ export interface FileRoutesById {
   '/_app/attendance-sheet': typeof AppAttendanceSheetRoute
   '/_app/celebrations': typeof AppCelebrationsRoute
   '/_app/challans': typeof AppChallansRoute
+  '/_app/commission-agents': typeof AppCommissionAgentsRoute
   '/_app/employees': typeof AppEmployeesRoute
   '/_app/integrations': typeof AppIntegrationsRoute
   '/_app/leave-history': typeof AppLeaveHistoryRoute
@@ -179,6 +188,7 @@ export interface FileRouteTypes {
     | '/attendance-sheet'
     | '/celebrations'
     | '/challans'
+    | '/commission-agents'
     | '/employees'
     | '/integrations'
     | '/leave-history'
@@ -196,6 +206,7 @@ export interface FileRouteTypes {
     | '/attendance-sheet'
     | '/celebrations'
     | '/challans'
+    | '/commission-agents'
     | '/employees'
     | '/integrations'
     | '/leave-history'
@@ -215,6 +226,7 @@ export interface FileRouteTypes {
     | '/_app/attendance-sheet'
     | '/_app/celebrations'
     | '/_app/challans'
+    | '/_app/commission-agents'
     | '/_app/employees'
     | '/_app/integrations'
     | '/_app/leave-history'
@@ -318,6 +330,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppEmployeesRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/commission-agents': {
+      id: '/_app/commission-agents'
+      path: '/commission-agents'
+      fullPath: '/commission-agents'
+      preLoaderRoute: typeof AppCommissionAgentsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/challans': {
       id: '/_app/challans'
       path: '/challans'
@@ -362,6 +381,7 @@ interface AppRouteChildren {
   AppAttendanceSheetRoute: typeof AppAttendanceSheetRoute
   AppCelebrationsRoute: typeof AppCelebrationsRoute
   AppChallansRoute: typeof AppChallansRoute
+  AppCommissionAgentsRoute: typeof AppCommissionAgentsRoute
   AppEmployeesRoute: typeof AppEmployeesRoute
   AppIntegrationsRoute: typeof AppIntegrationsRoute
   AppLeaveHistoryRoute: typeof AppLeaveHistoryRoute
@@ -379,6 +399,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppAttendanceSheetRoute: AppAttendanceSheetRoute,
   AppCelebrationsRoute: AppCelebrationsRoute,
   AppChallansRoute: AppChallansRoute,
+  AppCommissionAgentsRoute: AppCommissionAgentsRoute,
   AppEmployeesRoute: AppEmployeesRoute,
   AppIntegrationsRoute: AppIntegrationsRoute,
   AppLeaveHistoryRoute: AppLeaveHistoryRoute,
@@ -400,13 +421,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
