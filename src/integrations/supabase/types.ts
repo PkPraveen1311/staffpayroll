@@ -120,6 +120,110 @@ export type Database = {
           },
         ]
       }
+      commission_agents: {
+        Row: {
+          aadhaar: string | null
+          address: string | null
+          agent_code: string
+          bank_account: string | null
+          bank_name: string | null
+          created_at: string
+          email: string | null
+          full_name: string
+          id: string
+          ifsc_code: string | null
+          notes: string | null
+          pan: string | null
+          phone: string | null
+          status: string
+          tds_enabled: boolean
+          updated_at: string
+        }
+        Insert: {
+          aadhaar?: string | null
+          address?: string | null
+          agent_code: string
+          bank_account?: string | null
+          bank_name?: string | null
+          created_at?: string
+          email?: string | null
+          full_name: string
+          id?: string
+          ifsc_code?: string | null
+          notes?: string | null
+          pan?: string | null
+          phone?: string | null
+          status?: string
+          tds_enabled?: boolean
+          updated_at?: string
+        }
+        Update: {
+          aadhaar?: string | null
+          address?: string | null
+          agent_code?: string
+          bank_account?: string | null
+          bank_name?: string | null
+          created_at?: string
+          email?: string | null
+          full_name?: string
+          id?: string
+          ifsc_code?: string | null
+          notes?: string | null
+          pan?: string | null
+          phone?: string | null
+          status?: string
+          tds_enabled?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      commission_payments: {
+        Row: {
+          agent_id: string
+          created_at: string
+          gross_amount: number
+          id: string
+          net_amount: number
+          notes: string | null
+          paid_on: string
+          tds_amount: number
+          tds_rate: number
+          updated_at: string
+        }
+        Insert: {
+          agent_id: string
+          created_at?: string
+          gross_amount?: number
+          id?: string
+          net_amount?: number
+          notes?: string | null
+          paid_on?: string
+          tds_amount?: number
+          tds_rate?: number
+          updated_at?: string
+        }
+        Update: {
+          agent_id?: string
+          created_at?: string
+          gross_amount?: number
+          id?: string
+          net_amount?: number
+          notes?: string | null
+          paid_on?: string
+          tds_amount?: number
+          tds_rate?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commission_payments_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "commission_agents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       employee_advances: {
         Row: {
           amount: number
