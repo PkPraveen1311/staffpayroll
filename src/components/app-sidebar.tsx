@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 const items = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Employees", url: "/employees", icon: Users },
+  { title: "Commission Agents", url: "/commission-agents", icon: Percent },
   { title: "Celebrations", url: "/celebrations", icon: Cake },
   { title: "Attendance", url: "/attendance", icon: CalendarCheck },
   { title: "Attendance Sheet", url: "/attendance-sheet", icon: CalendarDays },
