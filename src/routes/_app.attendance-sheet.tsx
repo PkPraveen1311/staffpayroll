@@ -4,7 +4,8 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Printer, CalendarDays } from "lucide-react";
+import { exportToXlsx } from "@/lib/xlsx-export";
+import { Printer, CalendarDays, FileSpreadsheet } from "lucide-react";
 
 export const Route = createFileRoute("/_app/attendance-sheet")({
   component: AttendanceSheetPage,
