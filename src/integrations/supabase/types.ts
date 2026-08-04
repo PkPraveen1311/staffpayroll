@@ -128,16 +128,21 @@ export type Database = {
           bank_account: string | null
           bank_name: string | null
           created_at: string
+          date_of_birth: string | null
+          department: string | null
+          designation: string | null
           email: string | null
           full_name: string
           id: string
           ifsc_code: string | null
+          joining_date: string | null
           notes: string | null
           pan: string | null
           phone: string | null
           status: string
           tds_enabled: boolean
           updated_at: string
+          wedding_anniversary: string | null
         }
         Insert: {
           aadhaar?: string | null
@@ -146,16 +151,21 @@ export type Database = {
           bank_account?: string | null
           bank_name?: string | null
           created_at?: string
+          date_of_birth?: string | null
+          department?: string | null
+          designation?: string | null
           email?: string | null
           full_name: string
           id?: string
           ifsc_code?: string | null
+          joining_date?: string | null
           notes?: string | null
           pan?: string | null
           phone?: string | null
           status?: string
           tds_enabled?: boolean
           updated_at?: string
+          wedding_anniversary?: string | null
         }
         Update: {
           aadhaar?: string | null
@@ -164,16 +174,21 @@ export type Database = {
           bank_account?: string | null
           bank_name?: string | null
           created_at?: string
+          date_of_birth?: string | null
+          department?: string | null
+          designation?: string | null
           email?: string | null
           full_name?: string
           id?: string
           ifsc_code?: string | null
+          joining_date?: string | null
           notes?: string | null
           pan?: string | null
           phone?: string | null
           status?: string
           tds_enabled?: boolean
           updated_at?: string
+          wedding_anniversary?: string | null
         }
         Relationships: []
       }
@@ -183,36 +198,42 @@ export type Database = {
           created_at: string
           gross_amount: number
           id: string
+          month: number | null
           net_amount: number
           notes: string | null
           paid_on: string
           tds_amount: number
           tds_rate: number
           updated_at: string
+          year: number | null
         }
         Insert: {
           agent_id: string
           created_at?: string
           gross_amount?: number
           id?: string
+          month?: number | null
           net_amount?: number
           notes?: string | null
           paid_on?: string
           tds_amount?: number
           tds_rate?: number
           updated_at?: string
+          year?: number | null
         }
         Update: {
           agent_id?: string
           created_at?: string
           gross_amount?: number
           id?: string
+          month?: number | null
           net_amount?: number
           notes?: string | null
           paid_on?: string
           tds_amount?: number
           tds_rate?: number
           updated_at?: string
+          year?: number | null
         }
         Relationships: [
           {
