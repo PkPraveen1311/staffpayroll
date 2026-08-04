@@ -160,6 +160,7 @@ function CommissionAgentsPage() {
     const { error } = await supabase.from("commission_payments").insert({
       agent_id: agent.id, paid_on: payDate, gross_amount: gross,
       tds_rate: rate, tds_amount: tds, net_amount: gross - tds, notes: payNotes.trim() || null,
+      month: Number(payDate.slice(5, 7)), year: Number(payDate.slice(0, 4)),
     });
     if (error) { toast.error(error.message); return; }
     toast.success("Commission recorded");
