@@ -175,7 +175,9 @@ function CommissionAgentsPage() {
   };
 
   const exportAgents = () => exportToXlsx("Commission_Agents.xlsx", agents.map(a => ({
-    Code: a.agent_code, Name: a.full_name, PAN: a.pan ?? "", Aadhaar: a.aadhaar ?? "",
+    Code: a.agent_code, Name: a.full_name, Department: a.department ?? "", Designation: a.designation ?? "",
+    "Joining Date": a.joining_date ?? "", "Date of Birth": a.date_of_birth ?? "", Anniversary: a.wedding_anniversary ?? "",
+    PAN: a.pan ?? "", Aadhaar: a.aadhaar ?? "",
     Phone: a.phone ?? "", Email: a.email ?? "", Address: a.address ?? "",
     Bank: a.bank_name ?? "", "Account No.": a.bank_account ?? "", IFSC: a.ifsc_code ?? "",
     TDS: a.tds_enabled ? "Yes" : "No", "TDS Rate %": tdsRateFor(a), Status: a.status,
