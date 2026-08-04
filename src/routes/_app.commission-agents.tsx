@@ -127,6 +127,11 @@ function CommissionAgentsPage() {
       tds_enabled: !!editing.tds_enabled,
       status: editing.status || "active",
       notes: editing.notes?.trim() || null,
+      department: editing.department?.trim() || null,
+      designation: editing.designation?.trim() || null,
+      joining_date: editing.joining_date || null,
+      date_of_birth: editing.date_of_birth || null,
+      wedding_anniversary: editing.wedding_anniversary || null,
     };
     const { error } = editing.id
       ? await supabase.from("commission_agents").update(payload).eq("id", editing.id)
