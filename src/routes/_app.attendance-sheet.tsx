@@ -237,6 +237,9 @@ function AttendanceSheetPage() {
               </SelectContent>
             </Select>
           </div>
+          <Button variant="outline" onClick={exportExcel} disabled={!rows.length} className="gap-2">
+            <FileSpreadsheet className="h-4 w-4" /> Excel
+          </Button>
           <Button onClick={() => window.print()} className="gap-2">
             <Printer className="h-4 w-4" /> Print
           </Button>
