@@ -331,6 +331,16 @@ function CommissionAgentsPage() {
                 <Input value={editing.agent_code ?? ""} onChange={(e) => setEditing({ ...editing, agent_code: e.target.value })} /></div>
               <div className="space-y-1.5"><Label>Full name *</Label>
                 <Input value={editing.full_name ?? ""} onChange={(e) => setEditing({ ...editing, full_name: e.target.value })} /></div>
+              <div className="space-y-1.5"><Label>Department</Label>
+                <Input value={editing.department ?? ""} onChange={(e) => setEditing({ ...editing, department: e.target.value })} /></div>
+              <div className="space-y-1.5"><Label>Designation</Label>
+                <Input value={editing.designation ?? ""} onChange={(e) => setEditing({ ...editing, designation: e.target.value })} /></div>
+              <div className="space-y-1.5"><Label>Joining date</Label>
+                <Input type="date" value={editing.joining_date ?? ""} onChange={(e) => setEditing({ ...editing, joining_date: e.target.value })} /></div>
+              <div className="space-y-1.5"><Label>Date of birth</Label>
+                <Input type="date" value={editing.date_of_birth ?? ""} onChange={(e) => setEditing({ ...editing, date_of_birth: e.target.value })} /></div>
+              <div className="space-y-1.5"><Label>Wedding anniversary</Label>
+                <Input type="date" value={editing.wedding_anniversary ?? ""} onChange={(e) => setEditing({ ...editing, wedding_anniversary: e.target.value })} /></div>
               <div className="space-y-1.5"><Label>PAN</Label>
                 <Input placeholder="ABCDE1234F" value={editing.pan ?? ""} onChange={(e) => setEditing({ ...editing, pan: e.target.value.toUpperCase() })} maxLength={10} /></div>
               <div className="space-y-1.5"><Label>Aadhaar</Label>
