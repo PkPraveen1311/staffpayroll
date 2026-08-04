@@ -4,7 +4,8 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Printer, CalendarDays } from "lucide-react";
+import { exportToXlsx } from "@/lib/xlsx-export";
+import { Printer, CalendarDays, FileSpreadsheet } from "lucide-react";
 
 export const Route = createFileRoute("/_app/attendance-sheet")({
   component: AttendanceSheetPage,
@@ -169,6 +170,27 @@ function AttendanceSheetPage() {
 
   const isSunday = (d: number) => new Date(year, month - 1, d).getDay() === 0;
 
+  const exportExcel = () => {
+    const data = rows.map(({ emp, counts, net }, idx) => {
+      const inner = matrix.get(emp.id);
+      const row: Record<string, any> = {
+        "#": idx + 1,
+        Code: emp.employee_code,
+        Employee: emp.full_name,
+        Department: (emp as any).department ?? "",
+      };
+      for (const d of days) {
+        const ds = `${year}-${pad(month)}-${pad(d)}`;
+        const s = inner?.get(ds);
+        row[String(d)] = s ? STATUS_SHORT[s] : "-";
+      }
+      row.P = counts.P; row.A = counts.A; row.H = counts.H;
+      row.L = counts.L; row.W = counts.W; row.T = counts.T; row.Net = net;
+      return row;
+    });
+    exportToXlsx(`Attendance_${MONTHS[month - 1]}_${year}.xlsx`, data, `${MONTHS[month - 1]} ${year}`);
+  };
+
   return (
     <div className="p-6 print:p-0">
       <style>{`
@@ -215,6 +237,9 @@ function AttendanceSheetPage() {
               </SelectContent>
             </Select>
           </div>
+          <Button variant="outline" onClick={exportExcel} disabled={!rows.length} className="gap-2">
+            <FileSpreadsheet className="h-4 w-4" /> Excel
+          </Button>
           <Button onClick={() => window.print()} className="gap-2">
             <Printer className="h-4 w-4" /> Print
           </Button>

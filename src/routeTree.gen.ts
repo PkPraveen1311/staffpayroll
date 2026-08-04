@@ -22,6 +22,7 @@ import { Route as AppLeaveHistoryRouteImport } from './routes/_app.leave-history
 import { Route as AppIntegrationsRouteImport } from './routes/_app.integrations'
 import { Route as AppEmployeesRouteImport } from './routes/_app.employees'
 import { Route as AppCommissionAgentsRouteImport } from './routes/_app.commission-agents'
+import { Route as AppCommissionRouteImport } from './routes/_app.commission'
 import { Route as AppChallansRouteImport } from './routes/_app.challans'
 import { Route as AppCelebrationsRouteImport } from './routes/_app.celebrations'
 import { Route as AppAttendanceSheetRouteImport } from './routes/_app.attendance-sheet'
@@ -92,6 +93,11 @@ const AppCommissionAgentsRoute = AppCommissionAgentsRouteImport.update({
   path: '/commission-agents',
   getParentRoute: () => AppRoute,
 } as any)
+const AppCommissionRoute = AppCommissionRouteImport.update({
+  id: '/commission',
+  path: '/commission',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppChallansRoute = AppChallansRouteImport.update({
   id: '/challans',
   path: '/challans',
@@ -127,6 +133,7 @@ export interface FileRoutesByFullPath {
   '/attendance-sheet': typeof AppAttendanceSheetRoute
   '/celebrations': typeof AppCelebrationsRoute
   '/challans': typeof AppChallansRoute
+  '/commission': typeof AppCommissionRoute
   '/commission-agents': typeof AppCommissionAgentsRoute
   '/employees': typeof AppEmployeesRoute
   '/integrations': typeof AppIntegrationsRoute
@@ -145,6 +152,7 @@ export interface FileRoutesByTo {
   '/attendance-sheet': typeof AppAttendanceSheetRoute
   '/celebrations': typeof AppCelebrationsRoute
   '/challans': typeof AppChallansRoute
+  '/commission': typeof AppCommissionRoute
   '/commission-agents': typeof AppCommissionAgentsRoute
   '/employees': typeof AppEmployeesRoute
   '/integrations': typeof AppIntegrationsRoute
@@ -166,6 +174,7 @@ export interface FileRoutesById {
   '/_app/attendance-sheet': typeof AppAttendanceSheetRoute
   '/_app/celebrations': typeof AppCelebrationsRoute
   '/_app/challans': typeof AppChallansRoute
+  '/_app/commission': typeof AppCommissionRoute
   '/_app/commission-agents': typeof AppCommissionAgentsRoute
   '/_app/employees': typeof AppEmployeesRoute
   '/_app/integrations': typeof AppIntegrationsRoute
@@ -188,6 +197,7 @@ export interface FileRouteTypes {
     | '/attendance-sheet'
     | '/celebrations'
     | '/challans'
+    | '/commission'
     | '/commission-agents'
     | '/employees'
     | '/integrations'
@@ -206,6 +216,7 @@ export interface FileRouteTypes {
     | '/attendance-sheet'
     | '/celebrations'
     | '/challans'
+    | '/commission'
     | '/commission-agents'
     | '/employees'
     | '/integrations'
@@ -226,6 +237,7 @@ export interface FileRouteTypes {
     | '/_app/attendance-sheet'
     | '/_app/celebrations'
     | '/_app/challans'
+    | '/_app/commission'
     | '/_app/commission-agents'
     | '/_app/employees'
     | '/_app/integrations'
@@ -337,6 +349,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppCommissionAgentsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/commission': {
+      id: '/_app/commission'
+      path: '/commission'
+      fullPath: '/commission'
+      preLoaderRoute: typeof AppCommissionRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/challans': {
       id: '/_app/challans'
       path: '/challans'
@@ -381,6 +400,7 @@ interface AppRouteChildren {
   AppAttendanceSheetRoute: typeof AppAttendanceSheetRoute
   AppCelebrationsRoute: typeof AppCelebrationsRoute
   AppChallansRoute: typeof AppChallansRoute
+  AppCommissionRoute: typeof AppCommissionRoute
   AppCommissionAgentsRoute: typeof AppCommissionAgentsRoute
   AppEmployeesRoute: typeof AppEmployeesRoute
   AppIntegrationsRoute: typeof AppIntegrationsRoute
@@ -399,6 +419,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppAttendanceSheetRoute: AppAttendanceSheetRoute,
   AppCelebrationsRoute: AppCelebrationsRoute,
   AppChallansRoute: AppChallansRoute,
+  AppCommissionRoute: AppCommissionRoute,
   AppCommissionAgentsRoute: AppCommissionAgentsRoute,
   AppEmployeesRoute: AppEmployeesRoute,
   AppIntegrationsRoute: AppIntegrationsRoute,

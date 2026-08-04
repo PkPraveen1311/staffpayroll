@@ -13,6 +13,7 @@ const items = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Employees", url: "/employees", icon: Users },
   { title: "Commission Agents", url: "/commission-agents", icon: Percent },
+  { title: "Commission", url: "/commission", icon: HandCoins },
   { title: "Celebrations", url: "/celebrations", icon: Cake },
   { title: "Attendance", url: "/attendance", icon: CalendarCheck },
   { title: "Attendance Sheet", url: "/attendance-sheet", icon: CalendarDays },
@@ -31,7 +32,7 @@ const items = [
 export function AppSidebar() {
   const path = useRouterState({ select: (r) => r.location.pathname });
   const navigate = useNavigate();
-  const isActive = (url: string) => url === "/" ? path === "/" : path.startsWith(url);
+  const isActive = (url: string) => (url === "/" || url === "/commission") ? path === url : path.startsWith(url);
 
   const logout = async () => {
     await supabase.auth.signOut();

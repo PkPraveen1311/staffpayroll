@@ -35,11 +35,14 @@ type Agent = {
   id: string; agent_code: string; full_name: string; pan: string | null; aadhaar: string | null;
   phone: string | null; email: string | null; address: string | null; bank_account: string | null;
   ifsc_code: string | null; bank_name: string | null; tds_enabled: boolean; status: string; notes: string | null;
+  department: string | null; designation: string | null; joining_date: string | null;
+  date_of_birth: string | null; wedding_anniversary: string | null;
 };
 
 type Payment = {
   id: string; agent_id: string; paid_on: string; gross_amount: number;
   tds_rate: number; tds_amount: number; net_amount: number; notes: string | null;
+  month: number | null; year: number | null;
 };
 
 const RATE_194H = 2;
@@ -48,7 +51,9 @@ const RATE_NO_PAN = 20;
 const emptyAgent = (): Partial<Agent> => ({
   agent_code: "", full_name: "", pan: "", aadhaar: "", phone: "", email: "", address: "",
   bank_account: "", ifsc_code: "", bank_name: "", tds_enabled: true, status: "active", notes: "",
+  department: "", designation: "", joining_date: "", date_of_birth: "", wedding_anniversary: "",
 });
+
 
 export function tdsRateFor(agent: Pick<Agent, "tds_enabled" | "pan">) {
   if (!agent.tds_enabled) return 0;
@@ -122,6 +127,11 @@ function CommissionAgentsPage() {
       tds_enabled: !!editing.tds_enabled,
       status: editing.status || "active",
       notes: editing.notes?.trim() || null,
+      department: editing.department?.trim() || null,
+      designation: editing.designation?.trim() || null,
+      joining_date: editing.joining_date || null,
+      date_of_birth: editing.date_of_birth || null,
+      wedding_anniversary: editing.wedding_anniversary || null,
     };
     const { error } = editing.id
       ? await supabase.from("commission_agents").update(payload).eq("id", editing.id)
@@ -150,6 +160,7 @@ function CommissionAgentsPage() {
     const { error } = await supabase.from("commission_payments").insert({
       agent_id: agent.id, paid_on: payDate, gross_amount: gross,
       tds_rate: rate, tds_amount: tds, net_amount: gross - tds, notes: payNotes.trim() || null,
+      month: Number(payDate.slice(5, 7)), year: Number(payDate.slice(0, 4)),
     });
     if (error) { toast.error(error.message); return; }
     toast.success("Commission recorded");
@@ -164,7 +175,9 @@ function CommissionAgentsPage() {
   };
 
   const exportAgents = () => exportToXlsx("Commission_Agents.xlsx", agents.map(a => ({
-    Code: a.agent_code, Name: a.full_name, PAN: a.pan ?? "", Aadhaar: a.aadhaar ?? "",
+    Code: a.agent_code, Name: a.full_name, Department: a.department ?? "", Designation: a.designation ?? "",
+    "Joining Date": a.joining_date ?? "", "Date of Birth": a.date_of_birth ?? "", Anniversary: a.wedding_anniversary ?? "",
+    PAN: a.pan ?? "", Aadhaar: a.aadhaar ?? "",
     Phone: a.phone ?? "", Email: a.email ?? "", Address: a.address ?? "",
     Bank: a.bank_name ?? "", "Account No.": a.bank_account ?? "", IFSC: a.ifsc_code ?? "",
     TDS: a.tds_enabled ? "Yes" : "No", "TDS Rate %": tdsRateFor(a), Status: a.status,
@@ -318,6 +331,16 @@ function CommissionAgentsPage() {
                 <Input value={editing.agent_code ?? ""} onChange={(e) => setEditing({ ...editing, agent_code: e.target.value })} /></div>
               <div className="space-y-1.5"><Label>Full name *</Label>
                 <Input value={editing.full_name ?? ""} onChange={(e) => setEditing({ ...editing, full_name: e.target.value })} /></div>
+              <div className="space-y-1.5"><Label>Department</Label>
+                <Input value={editing.department ?? ""} onChange={(e) => setEditing({ ...editing, department: e.target.value })} /></div>
+              <div className="space-y-1.5"><Label>Designation</Label>
+                <Input value={editing.designation ?? ""} onChange={(e) => setEditing({ ...editing, designation: e.target.value })} /></div>
+              <div className="space-y-1.5"><Label>Joining date</Label>
+                <Input type="date" value={editing.joining_date ?? ""} onChange={(e) => setEditing({ ...editing, joining_date: e.target.value })} /></div>
+              <div className="space-y-1.5"><Label>Date of birth</Label>
+                <Input type="date" value={editing.date_of_birth ?? ""} onChange={(e) => setEditing({ ...editing, date_of_birth: e.target.value })} /></div>
+              <div className="space-y-1.5"><Label>Wedding anniversary</Label>
+                <Input type="date" value={editing.wedding_anniversary ?? ""} onChange={(e) => setEditing({ ...editing, wedding_anniversary: e.target.value })} /></div>
               <div className="space-y-1.5"><Label>PAN</Label>
                 <Input placeholder="ABCDE1234F" value={editing.pan ?? ""} onChange={(e) => setEditing({ ...editing, pan: e.target.value.toUpperCase() })} maxLength={10} /></div>
               <div className="space-y-1.5"><Label>Aadhaar</Label>
