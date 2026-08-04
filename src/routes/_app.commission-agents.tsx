@@ -35,11 +35,14 @@ type Agent = {
   id: string; agent_code: string; full_name: string; pan: string | null; aadhaar: string | null;
   phone: string | null; email: string | null; address: string | null; bank_account: string | null;
   ifsc_code: string | null; bank_name: string | null; tds_enabled: boolean; status: string; notes: string | null;
+  department: string | null; designation: string | null; joining_date: string | null;
+  date_of_birth: string | null; wedding_anniversary: string | null;
 };
 
 type Payment = {
   id: string; agent_id: string; paid_on: string; gross_amount: number;
   tds_rate: number; tds_amount: number; net_amount: number; notes: string | null;
+  month: number | null; year: number | null;
 };
 
 const RATE_194H = 2;
@@ -48,7 +51,9 @@ const RATE_NO_PAN = 20;
 const emptyAgent = (): Partial<Agent> => ({
   agent_code: "", full_name: "", pan: "", aadhaar: "", phone: "", email: "", address: "",
   bank_account: "", ifsc_code: "", bank_name: "", tds_enabled: true, status: "active", notes: "",
+  department: "", designation: "", joining_date: "", date_of_birth: "", wedding_anniversary: "",
 });
+
 
 export function tdsRateFor(agent: Pick<Agent, "tds_enabled" | "pan">) {
   if (!agent.tds_enabled) return 0;
