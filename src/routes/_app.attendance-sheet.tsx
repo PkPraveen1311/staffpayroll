@@ -170,6 +170,27 @@ function AttendanceSheetPage() {
 
   const isSunday = (d: number) => new Date(year, month - 1, d).getDay() === 0;
 
+  const exportExcel = () => {
+    const data = rows.map(({ emp, counts, net }, idx) => {
+      const inner = matrix.get(emp.id);
+      const row: Record<string, any> = {
+        "#": idx + 1,
+        Code: emp.employee_code,
+        Employee: emp.full_name,
+        Department: (emp as any).department ?? "",
+      };
+      for (const d of days) {
+        const ds = `${year}-${pad(month)}-${pad(d)}`;
+        const s = inner?.get(ds);
+        row[String(d)] = s ? STATUS_SHORT[s] : "-";
+      }
+      row.P = counts.P; row.A = counts.A; row.H = counts.H;
+      row.L = counts.L; row.W = counts.W; row.T = counts.T; row.Net = net;
+      return row;
+    });
+    exportToXlsx(`Attendance_${MONTHS[month - 1]}_${year}.xlsx`, data, `${MONTHS[month - 1]} ${year}`);
+  };
+
   return (
     <div className="p-6 print:p-0">
       <style>{`
