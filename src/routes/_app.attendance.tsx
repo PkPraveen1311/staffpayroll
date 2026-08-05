@@ -301,6 +301,8 @@ function AttendancePage() {
               </TableBody>
             </Table>
           </Card>
+
+          <AgentRoster date={date} />
         </TabsContent>
 
         <TabsContent value="monthly">
@@ -488,5 +490,140 @@ function MonthlyView({ employees }: { employees: any[] }) {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+function AgentRoster({ date }: { date: string }) {
+  const qc = useQueryClient();
+  const [search, setSearch] = useState("");
+
+  const { data: agents = [] } = useQuery({
+    queryKey: ["agents-min"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("commission_agents")
+        .select("id, full_name, agent_code, department")
+        .eq("status", "active")
+        .order("full_name");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const { data: records = [] } = useQuery({
+    queryKey: ["agent-attendance", date],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("agent_attendance").select("*").eq("date", date);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const recMap = useMemo(() => new Map((records as any[]).map((r) => [r.agent_id, r])), [records]);
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return agents as any[];
+    return (agents as any[]).filter(
+      (a) => a.full_name.toLowerCase().includes(q) || (a.agent_code || "").toLowerCase().includes(q),
+    );
+  }, [agents, search]);
+
+  const setStatus = async (agent_id: string, status: StatusKey) => {
+    const existing: any = recMap.get(agent_id);
+    const hours = STATUS_META[status].hours;
+    if (existing && existing.status === status) {
+      const { error } = await supabase.from("agent_attendance").delete().eq("id", existing.id);
+      if (error) return toast.error(error.message);
+    } else {
+      const { error } = existing
+        ? await supabase.from("agent_attendance").update({ status, hours }).eq("id", existing.id)
+        : await supabase.from("agent_attendance").insert({ agent_id, date, status, hours });
+      if (error) return toast.error(error.message);
+    }
+    qc.invalidateQueries({ queryKey: ["agent-attendance", date] });
+  };
+
+  return (
+    <Card className="bg-gradient-card border-border/60 shadow-elegant">
+      <CardContent className="p-4 pb-0 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-semibold">Commission Agents</h2>
+          <p className="text-xs text-muted-foreground">Separate attendance register for third-party agents.</p>
+        </div>
+        <div className="relative">
+          <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search agent…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-8 w-56"
+          />
+        </div>
+      </CardContent>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Agent</TableHead>
+            <TableHead className="hidden md:table-cell">Department</TableHead>
+            <TableHead>Mark</TableHead>
+            <TableHead className="text-right">Hours</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {filtered.length === 0 ? (
+            <TableRow>
+              <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
+                No active commission agents.
+              </TableCell>
+            </TableRow>
+          ) : (
+            filtered.map((a: any) => {
+              const rec: any = recMap.get(a.id);
+              const cur = rec?.status as StatusKey | undefined;
+              return (
+                <TableRow key={a.id}>
+                  <TableCell>
+                    <div className="font-medium">{a.full_name}</div>
+                    <div className="text-xs text-muted-foreground font-mono">{a.agent_code}</div>
+                  </TableCell>
+                  <TableCell className="hidden md:table-cell">{a.department || "—"}</TableCell>
+                  <TableCell>
+                    <div className="flex flex-wrap gap-1">
+                      {STATUS_ORDER.map((s) => {
+                        const m = STATUS_META[s];
+                        const active = cur === s;
+                        return (
+                          <button
+                            key={s}
+                            onClick={() => setStatus(a.id, s)}
+                            title={m.label}
+                            className={cn(
+                              "h-8 w-8 rounded-md border text-xs font-bold transition-all",
+                              active
+                                ? m.cls + " ring-2 ring-offset-0 ring-current scale-105"
+                                : "border-border/60 text-muted-foreground hover:bg-muted/40",
+                            )}
+                          >
+                            {m.short}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {cur ? (
+                      <Badge variant={STATUS_META[cur].badge}>{rec?.hours ?? 0}h</Badge>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">—</span>
+                    )}
+                  </TableCell>
+                </TableRow>
+              );
+            })
+          )}
+        </TableBody>
+      </Table>
+    </Card>
   );
 }
