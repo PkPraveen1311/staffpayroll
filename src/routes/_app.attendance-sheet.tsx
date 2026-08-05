@@ -4,11 +4,21 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { exportToXlsx } from "@/lib/xlsx-export";
+import { exportAttendanceSheetXlsx, type AttendanceSheetRow } from "@/lib/attendance-xlsx";
 import { Printer, CalendarDays, FileSpreadsheet } from "lucide-react";
 
 export const Route = createFileRoute("/_app/attendance-sheet")({
   component: AttendanceSheetPage,
+  head: () => ({
+    meta: [
+      { title: "Monthly Attendance Sheet | PayPulse" },
+      { name: "description", content: "Printable monthly attendance matrix for employees and commission agents with paid-day totals." },
+      { property: "og:title", content: "Monthly Attendance Sheet | PayPulse" },
+      { property: "og:description", content: "Printable monthly attendance matrix for employees and commission agents with paid-day totals." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
 });
 
 type StatusKey = "present" | "absent" | "half-day" | "leave" | "week-off" | "tour";
@@ -40,6 +50,9 @@ function pad(n: number) {
   return n < 10 ? `0${n}` : `${n}`;
 }
 
+type Person = { id: string; code: string; name: string; department: string };
+type SheetRow = { person: Person; counts: Record<"P" | "A" | "H" | "L" | "W" | "T", number>; net: number };
+
 function AttendanceSheetPage() {
   const now = new Date();
   const [month, setMonth] = useState(now.getMonth() + 1);
@@ -66,12 +79,38 @@ function AttendanceSheetPage() {
     },
   });
 
+  const { data: agents = [] } = useQuery({
+    queryKey: ["agents-active-sheet"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("commission_agents")
+        .select("id, agent_code, full_name, department")
+        .eq("status", "active")
+        .order("agent_code");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
   const { data: attendance = [] } = useQuery({
     queryKey: ["attendance-sheet", year, month],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("attendance")
         .select("employee_id, date, status")
+        .gte("date", startDate)
+        .lte("date", endDate);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const { data: agentAttendance = [] } = useQuery({
+    queryKey: ["agent-attendance-sheet", year, month],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("agent_attendance")
+        .select("agent_id, date, status")
         .gte("date", startDate)
         .lte("date", endDate);
       if (error) throw error;
@@ -114,14 +153,21 @@ function AttendanceSheetPage() {
     const m = new Map<string, Map<string, StatusKey>>();
     for (const r of attendance) {
       let inner = m.get(r.employee_id);
-      if (!inner) {
-        inner = new Map();
-        m.set(r.employee_id, inner);
-      }
+      if (!inner) { inner = new Map(); m.set(r.employee_id, inner); }
       inner.set(r.date, r.status as StatusKey);
     }
     return m;
   }, [attendance]);
+
+  const agentMatrix = useMemo(() => {
+    const m = new Map<string, Map<string, StatusKey>>();
+    for (const r of agentAttendance as any[]) {
+      let inner = m.get(r.agent_id);
+      if (!inner) { inner = new Map(); m.set(r.agent_id, inner); }
+      inner.set(r.date, r.status as StatusKey);
+    }
+    return m;
+  }, [agentAttendance]);
 
   const approvedLeaveMap = useMemo(() => {
     const m = new Map<string, Set<string>>();
@@ -139,21 +185,24 @@ function AttendanceSheetPage() {
     return m;
   }, [leaves, startDate, endDate]);
 
-  const rows = useMemo(() => {
-    return employees.map((e) => {
-      const inner = matrix.get(e.id);
-      const counts = { P: 0, A: 0, H: 0, L: 0, W: 0, T: 0 };
-      for (const d of days) {
-        const ds = `${year}-${pad(month)}-${pad(d)}`;
-        const s = inner?.get(ds);
-        if (!s) continue;
-        if (s === "present") counts.P++;
-        else if (s === "absent") counts.A++;
-        else if (s === "half-day") counts.H++;
-        else if (s === "leave") counts.L++;
-        else if (s === "week-off") counts.W++;
-        else if (s === "tour") counts.T++;
-      }
+  const countFor = (inner: Map<string, StatusKey> | undefined) => {
+    const counts = { P: 0, A: 0, H: 0, L: 0, W: 0, T: 0 };
+    for (const d of days) {
+      const s = inner?.get(`${year}-${pad(month)}-${pad(d)}`);
+      if (!s) continue;
+      if (s === "present") counts.P++;
+      else if (s === "absent") counts.A++;
+      else if (s === "half-day") counts.H++;
+      else if (s === "leave") counts.L++;
+      else if (s === "week-off") counts.W++;
+      else if (s === "tour") counts.T++;
+    }
+    return counts;
+  };
+
+  const employeeRows: SheetRow[] = useMemo(() => {
+    return employees.map((e: any) => {
+      const counts = countFor(matrix.get(e.id));
       const allowed = allowedMap.has(e.id) ? (allowedMap.get(e.id) ?? 0) : 4;
       const countedWeekOff = Math.min(counts.W, allowed);
       const remainingAllowed = allowed - countedWeekOff;
@@ -164,32 +213,115 @@ function AttendanceSheetPage() {
         daysInMonth,
         counts.P + counts.T + countedLeaves + countedWeekOff + counts.H / 2 + halfDayCredit,
       );
-      return { emp: e, counts, net };
+      return {
+        person: { id: e.id, code: e.employee_code, name: e.full_name, department: e.department ?? "" },
+        counts,
+        net,
+      };
     });
   }, [employees, matrix, days, month, year, allowedMap, approvedLeaveMap, daysInMonth]);
 
+  const agentRows: SheetRow[] = useMemo(() => {
+    return (agents as any[]).map((a) => {
+      const counts = countFor(agentMatrix.get(a.id));
+      const net = Math.min(daysInMonth, counts.P + counts.T + counts.L + counts.W + counts.H / 2);
+      return {
+        person: { id: a.id, code: a.agent_code, name: a.full_name, department: a.department ?? "" },
+        counts,
+        net,
+      };
+    });
+  }, [agents, agentMatrix, days, month, year, daysInMonth]);
+
   const isSunday = (d: number) => new Date(year, month - 1, d).getDay() === 0;
 
-  const exportExcel = () => {
-    const data = rows.map(({ emp, counts, net }, idx) => {
-      const inner = matrix.get(emp.id);
-      const row: Record<string, any> = {
-        "#": idx + 1,
-        Code: emp.employee_code,
-        Employee: emp.full_name,
-        Department: (emp as any).department ?? "",
+  const toXlsxRows = (rows: SheetRow[], m: Map<string, Map<string, StatusKey>>): AttendanceSheetRow[] =>
+    rows.map(({ person, counts, net }) => {
+      const inner = m.get(person.id);
+      return {
+        code: person.code,
+        name: person.name,
+        department: person.department,
+        cells: days.map((d) => {
+          const s = inner?.get(`${year}-${pad(month)}-${pad(d)}`);
+          return s ? STATUS_SHORT[s] : "-";
+        }),
+        counts,
+        net,
       };
-      for (const d of days) {
-        const ds = `${year}-${pad(month)}-${pad(d)}`;
-        const s = inner?.get(ds);
-        row[String(d)] = s ? STATUS_SHORT[s] : "-";
-      }
-      row.P = counts.P; row.A = counts.A; row.H = counts.H;
-      row.L = counts.L; row.W = counts.W; row.T = counts.T; row.Net = net;
-      return row;
     });
-    exportToXlsx(`Attendance_${MONTHS[month - 1]}_${year}.xlsx`, data, `${MONTHS[month - 1]} ${year}`);
-  };
+
+  const exportExcel = () =>
+    exportAttendanceSheetXlsx({
+      monthLabel: `${MONTHS[month - 1]} ${year}`,
+      days,
+      sundays: days.filter(isSunday),
+      employees: toXlsxRows(employeeRows, matrix),
+      agents: toXlsxRows(agentRows, agentMatrix),
+    });
+
+  const renderTable = (title: string, rows: SheetRow[], m: Map<string, Map<string, StatusKey>>, emptyText: string) => (
+    <section className="mb-8 break-inside-avoid">
+      <h2 className="text-sm font-bold mb-2 print:text-[10px]">{title}</h2>
+      <div className="rounded-lg border border-border overflow-x-auto print:border-0 print:overflow-visible">
+        <table className="w-full text-[10px] print:text-[8px] border-collapse">
+          <thead>
+            <tr className="bg-muted/40 print:bg-white">
+              <th className="border border-border px-1 py-1 text-left sticky left-0 bg-muted/40 print:bg-white">#</th>
+              <th className="border border-border px-2 py-1 text-left sticky left-6 bg-muted/40 print:bg-white min-w-[140px]">Name</th>
+              {days.map((d) => (
+                <th key={d} className={`border border-border px-0.5 py-1 text-center w-6 ${isSunday(d) ? "bg-rose-500/10 print:bg-gray-200" : ""}`}>{d}</th>
+              ))}
+              <th className="border border-border px-1 py-1 text-center w-7">P</th>
+              <th className="border border-border px-1 py-1 text-center w-7">A</th>
+              <th className="border border-border px-1 py-1 text-center w-7">H</th>
+              <th className="border border-border px-1 py-1 text-center w-7">L</th>
+              <th className="border border-border px-1 py-1 text-center w-7">W</th>
+              <th className="border border-border px-1 py-1 text-center w-7">T</th>
+              <th className="border border-border px-1 py-1 text-center w-10 font-bold">Net</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(({ person, counts, net }, idx) => {
+              const inner = m.get(person.id);
+              return (
+                <tr key={person.id} className="hover:bg-muted/30 print:hover:bg-transparent">
+                  <td className="border border-border px-1 py-0.5 text-center sticky left-0 bg-background print:bg-white">{idx + 1}</td>
+                  <td className="border border-border px-2 py-0.5 sticky left-6 bg-background print:bg-white">
+                    <div className="font-medium leading-tight">{person.name}</div>
+                    <div className="text-[8px] text-muted-foreground print:text-gray-600">{person.code}</div>
+                  </td>
+                  {days.map((d) => {
+                    const s = inner?.get(`${year}-${pad(month)}-${pad(d)}`);
+                    return (
+                      <td
+                        key={d}
+                        className={`border border-border px-0.5 py-0.5 text-center font-semibold ${isSunday(d) ? "bg-rose-500/5 print:bg-gray-100" : ""} ${s ? STATUS_COLOR[s] : "text-muted-foreground print:text-gray-400"}`}
+                      >
+                        {s ? STATUS_SHORT[s] : "-"}
+                      </td>
+                    );
+                  })}
+                  <td className="border border-border px-1 py-0.5 text-center text-emerald-600 print:text-black font-semibold">{counts.P}</td>
+                  <td className="border border-border px-1 py-0.5 text-center text-rose-600 print:text-black font-semibold">{counts.A}</td>
+                  <td className="border border-border px-1 py-0.5 text-center text-amber-600 print:text-black font-semibold">{counts.H}</td>
+                  <td className="border border-border px-1 py-0.5 text-center text-sky-600 print:text-black font-semibold">{counts.L}</td>
+                  <td className="border border-border px-1 py-0.5 text-center text-violet-600 print:text-black font-semibold">{counts.W}</td>
+                  <td className="border border-border px-1 py-0.5 text-center text-cyan-600 print:text-black font-semibold">{counts.T}</td>
+                  <td className="border border-border px-1 py-0.5 text-center font-bold">{net}</td>
+                </tr>
+              );
+            })}
+            {rows.length === 0 && (
+              <tr>
+                <td colSpan={days.length + 9} className="text-center py-8 text-muted-foreground">{emptyText}</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
 
   return (
     <div className="p-6 print:p-0">
@@ -201,6 +333,7 @@ function AttendanceSheetPage() {
           .print-area { color: black !important; }
           .print-area table { border-color: #000 !important; }
           .print-area th, .print-area td { border-color: #000 !important; }
+          .page-break { break-before: page; }
         }
       `}</style>
 
@@ -211,7 +344,7 @@ function AttendanceSheetPage() {
             Monthly Attendance Sheet
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Printable matrix view — all employees on one page.
+            Employees first, commission agents below — scroll down for the agent sheet.
           </p>
         </div>
         <div className="flex items-end gap-3">
@@ -237,7 +370,7 @@ function AttendanceSheetPage() {
               </SelectContent>
             </Select>
           </div>
-          <Button variant="outline" onClick={exportExcel} disabled={!rows.length} className="gap-2">
+          <Button variant="outline" onClick={exportExcel} className="gap-2">
             <FileSpreadsheet className="h-4 w-4" /> Excel
           </Button>
           <Button onClick={() => window.print()} className="gap-2">
@@ -252,71 +385,9 @@ function AttendanceSheetPage() {
           <div className="text-xs">{MONTHS[month - 1]} {year}</div>
         </div>
 
-        <div className="rounded-lg border border-border overflow-x-auto print:border-0 print:overflow-visible">
-          <table className="w-full text-[10px] print:text-[8px] border-collapse">
-            <thead>
-              <tr className="bg-muted/40 print:bg-white">
-                <th className="border border-border px-1 py-1 text-left sticky left-0 bg-muted/40 print:bg-white">#</th>
-                <th className="border border-border px-2 py-1 text-left sticky left-6 bg-muted/40 print:bg-white min-w-[140px]">Employee</th>
-                {days.map((d) => (
-                  <th
-                    key={d}
-                    className={`border border-border px-0.5 py-1 text-center w-6 ${isSunday(d) ? "bg-rose-500/10 print:bg-gray-200" : ""}`}
-                  >
-                    {d}
-                  </th>
-                ))}
-                <th className="border border-border px-1 py-1 text-center w-7">P</th>
-                <th className="border border-border px-1 py-1 text-center w-7">A</th>
-                <th className="border border-border px-1 py-1 text-center w-7">H</th>
-                <th className="border border-border px-1 py-1 text-center w-7">L</th>
-                <th className="border border-border px-1 py-1 text-center w-7">W</th>
-                <th className="border border-border px-1 py-1 text-center w-7">T</th>
-                <th className="border border-border px-1 py-1 text-center w-10 font-bold">Net</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map(({ emp, counts, net }, idx) => {
-                const inner = matrix.get(emp.id);
-                return (
-                  <tr key={emp.id} className="hover:bg-muted/30 print:hover:bg-transparent">
-                    <td className="border border-border px-1 py-0.5 text-center sticky left-0 bg-background print:bg-white">{idx + 1}</td>
-                    <td className="border border-border px-2 py-0.5 sticky left-6 bg-background print:bg-white">
-                      <div className="font-medium leading-tight">{emp.full_name}</div>
-                      <div className="text-[8px] text-muted-foreground print:text-gray-600">{emp.employee_code}</div>
-                    </td>
-                    {days.map((d) => {
-                      const ds = `${year}-${pad(month)}-${pad(d)}`;
-                      const s = inner?.get(ds);
-                      return (
-                        <td
-                          key={d}
-                          className={`border border-border px-0.5 py-0.5 text-center font-semibold ${isSunday(d) ? "bg-rose-500/5 print:bg-gray-100" : ""} ${s ? STATUS_COLOR[s] : "text-muted-foreground print:text-gray-400"}`}
-                        >
-                          {s ? STATUS_SHORT[s] : "-"}
-                        </td>
-                      );
-                    })}
-                    <td className="border border-border px-1 py-0.5 text-center text-emerald-600 print:text-black font-semibold">{counts.P}</td>
-                    <td className="border border-border px-1 py-0.5 text-center text-rose-600 print:text-black font-semibold">{counts.A}</td>
-                    <td className="border border-border px-1 py-0.5 text-center text-amber-600 print:text-black font-semibold">{counts.H}</td>
-                    <td className="border border-border px-1 py-0.5 text-center text-sky-600 print:text-black font-semibold">{counts.L}</td>
-                    <td className="border border-border px-1 py-0.5 text-center text-violet-600 print:text-black font-semibold">{counts.W}</td>
-                    <td className="border border-border px-1 py-0.5 text-center text-cyan-600 print:text-black font-semibold">{counts.T}</td>
-                    <td className="border border-border px-1 py-0.5 text-center font-bold">{net}</td>
-                  </tr>
-                );
-              })}
-              {rows.length === 0 && (
-                <tr>
-                  <td colSpan={days.length + 9} className="text-center py-8 text-muted-foreground">
-                    No active employees.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+        {renderTable("Employees", employeeRows, matrix, "No active employees.")}
+        <div className="page-break" />
+        {renderTable("Commission Agents", agentRows, agentMatrix, "No active commission agents.")}
 
         <div className="mt-3 flex flex-wrap gap-4 text-[10px] text-muted-foreground print:text-black">
           <span><b className="text-emerald-600 print:text-black">P</b> Present</span>
