@@ -52,6 +52,47 @@ export type Database = {
           },
         ]
       }
+      agent_attendance: {
+        Row: {
+          agent_id: string
+          created_at: string
+          date: string
+          hours: number
+          id: string
+          notes: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          agent_id: string
+          created_at?: string
+          date: string
+          hours?: number
+          id?: string
+          notes?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          agent_id?: string
+          created_at?: string
+          date?: string
+          hours?: number
+          id?: string
+          notes?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_attendance_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "commission_agents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       allowed_week_offs: {
         Row: {
           allowed: number
