@@ -301,6 +301,8 @@ function AttendancePage() {
               </TableBody>
             </Table>
           </Card>
+
+          <AgentRoster date={date} />
         </TabsContent>
 
         <TabsContent value="monthly">
