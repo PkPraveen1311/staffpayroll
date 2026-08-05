@@ -15,7 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { fmtINR } from "@/lib/format";
 import { exportToXlsx } from "@/lib/xlsx-export";
-import { Plus, Trash2, Pencil, FileSpreadsheet, Printer, Percent } from "lucide-react";
+import { Plus, Trash2, Pencil, FileSpreadsheet, Printer } from "lucide-react";
 
 export const Route = createFileRoute("/_app/commission-agents")({
   component: CommissionAgentsPage,
@@ -63,11 +63,6 @@ export function tdsRateFor(agent: Pick<Agent, "tds_enabled" | "pan">) {
 function CommissionAgentsPage() {
   const qc = useQueryClient();
   const [editing, setEditing] = useState<Partial<Agent> | null>(null);
-  const [payOpen, setPayOpen] = useState(false);
-  const [payAgent, setPayAgent] = useState("");
-  const [payAmt, setPayAmt] = useState("");
-  const [payDate, setPayDate] = useState(new Date().toISOString().slice(0, 10));
-  const [payNotes, setPayNotes] = useState("");
 
   const { data: agents = [] } = useQuery<Agent[]>({
     queryKey: ["commission-agents"],
@@ -99,10 +94,6 @@ function CommissionAgentsPage() {
     return m;
   }, [payments]);
 
-  const previewAgent = payAgent ? agentMap.get(payAgent) : undefined;
-  const previewRate = previewAgent ? tdsRateFor(previewAgent) : 0;
-  const previewGross = Number(payAmt || 0);
-  const previewTds = Math.round((previewGross * previewRate) / 100);
 
   const saveAgent = async () => {
     if (!editing?.full_name?.trim() || !editing?.agent_code?.trim()) {
@@ -150,23 +141,6 @@ function CommissionAgentsPage() {
     qc.invalidateQueries({ queryKey: ["commission-payments"] });
   };
 
-  const savePayment = async () => {
-    const agent = agentMap.get(payAgent);
-    if (!agent) { toast.error("Select an agent"); return; }
-    const gross = Number(payAmt);
-    if (!gross || gross <= 0) { toast.error("Enter a valid commission amount"); return; }
-    const rate = tdsRateFor(agent);
-    const tds = Math.round((gross * rate) / 100);
-    const { error } = await supabase.from("commission_payments").insert({
-      agent_id: agent.id, paid_on: payDate, gross_amount: gross,
-      tds_rate: rate, tds_amount: tds, net_amount: gross - tds, notes: payNotes.trim() || null,
-      month: Number(payDate.slice(5, 7)), year: Number(payDate.slice(0, 4)),
-    });
-    if (error) { toast.error(error.message); return; }
-    toast.success("Commission recorded");
-    setPayOpen(false); setPayAmt(""); setPayNotes("");
-    qc.invalidateQueries({ queryKey: ["commission-payments"] });
-  };
 
   const removePayment = async (id: string) => {
     const { error } = await supabase.from("commission_payments").delete().eq("id", id);
@@ -200,9 +174,6 @@ function CommissionAgentsPage() {
           <Button variant="outline" onClick={exportAgents} disabled={!agents.length}><FileSpreadsheet className="h-4 w-4 mr-1" />Agents Excel</Button>
           <Button variant="outline" onClick={exportPayments} disabled={!payments.length}><FileSpreadsheet className="h-4 w-4 mr-1" />Payouts Excel</Button>
           <Button variant="outline" onClick={() => window.print()}><Printer className="h-4 w-4 mr-1" />Print</Button>
-          <Button variant="outline" onClick={() => { setPayAgent(agents[0]?.id ?? ""); setPayOpen(true); }} disabled={!agents.length}>
-            <Percent className="h-4 w-4 mr-1" />Record Commission
-          </Button>
           <Button onClick={() => setEditing(emptyAgent())}><Plus className="h-4 w-4 mr-1" />New Agent</Button>
         </div>
       </div>
@@ -380,38 +351,6 @@ function CommissionAgentsPage() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditing(null)}>Cancel</Button>
             <Button onClick={saveAgent}>Save</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Payment dialog */}
-      <Dialog open={payOpen} onOpenChange={setPayOpen}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Record Commission Payout</DialogTitle></DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-1.5"><Label>Agent</Label>
-              <Select value={payAgent} onValueChange={setPayAgent}>
-                <SelectTrigger><SelectValue placeholder="Select agent…" /></SelectTrigger>
-                <SelectContent>
-                  {agents.map(a => <SelectItem key={a.id} value={a.id}>{a.full_name} ({a.agent_code})</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5"><Label>Commission amount (₹)</Label>
-              <Input type="number" min="0" value={payAmt} onChange={(e) => setPayAmt(e.target.value)} /></div>
-            <div className="space-y-1.5"><Label>Payment date</Label>
-              <Input type="date" value={payDate} onChange={(e) => setPayDate(e.target.value)} /></div>
-            <div className="space-y-1.5"><Label>Notes</Label>
-              <Input value={payNotes} onChange={(e) => setPayNotes(e.target.value)} /></div>
-            <div className="rounded-lg border border-border/60 p-3 text-sm space-y-1">
-              <div className="flex justify-between"><span className="text-muted-foreground">TDS rate</span><span>{previewRate}%</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">TDS deducted</span><span>{fmtINR(previewTds)}</span></div>
-              <div className="flex justify-between font-semibold"><span>Net payable</span><span>{fmtINR(previewGross - previewTds)}</span></div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setPayOpen(false)}>Cancel</Button>
-            <Button onClick={savePayment}>Save</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
