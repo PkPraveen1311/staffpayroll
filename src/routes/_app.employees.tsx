@@ -189,6 +189,32 @@ function EmployeesPage() {
         </div>
         <div className="flex gap-2 flex-wrap">
           <Button onClick={exportExcel} variant="outline"><FileSpreadsheet className="h-4 w-4 mr-1" />Excel</Button>
+          <ExcelImportDialog
+            title="Import employees from Excel"
+            description="Upload a sheet of employee details. The first row must contain column headers — download the template for the exact format."
+            templateName="Employee_Import_Template.xlsx"
+            templateHeaders={EMP_TEMPLATE_HEADERS}
+            templateSample={EMP_TEMPLATE_SAMPLE}
+            mapRow={mapEmployeeRow}
+            onImport={async (records) => {
+              const existing = new Map(employees.map((e) => [e.employee_code.trim().toLowerCase(), e.id]));
+              let created = 0, updated = 0;
+              for (const r of records) {
+                const id = existing.get(String(r.employee_code).trim().toLowerCase());
+                if (id) {
+                  const { error } = await supabase.from("employees").update(r).eq("id", id);
+                  if (error) throw error;
+                  updated++;
+                } else {
+                  const { error } = await supabase.from("employees").insert(r as any);
+                  if (error) throw error;
+                  created++;
+                }
+              }
+              qc.invalidateQueries({ queryKey: ["employees"] });
+              return { created, updated };
+            }}
+          />
           <Button onClick={() => window.print()} variant="outline"><Printer className="h-4 w-4 mr-1" />Print</Button>
           <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setEditing(null); }}>
             <DialogTrigger asChild>
