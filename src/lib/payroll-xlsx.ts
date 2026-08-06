@@ -149,7 +149,7 @@ export async function exportPayrollRegisterXlsx(month: number, year: number, row
       };
     }
     // Numeric formatting
-    const inr = '"₹"#,##0.00;[Red]("₹"#,##0.00)';
+    const inr = '"₹"#,##0;[Red]("₹"#,##0)';
     for (let col = 6; col <= 24; col++) {
       ws.getCell(rowNum, col).numFmt = inr;
       ws.getCell(rowNum, col).alignment = { horizontal: "right", vertical: "middle" };
@@ -187,7 +187,7 @@ export async function exportPayrollRegisterXlsx(month: number, year: number, row
   sumCols.forEach((col) => {
     const c = ws.getCell(totalRow, col);
     c.value = { formula: `SUM(${colLetter(col)}6:${colLetter(col)}${totalRow - 1})` };
-    c.numFmt = '"₹"#,##0.00';
+    c.numFmt = '"₹"#,##0';
   });
   ws.getRow(totalRow).height = 24;
   for (let col = 1; col <= headers.length; col++) {
