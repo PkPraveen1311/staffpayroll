@@ -11,6 +11,7 @@ import { Play, Printer, FileSpreadsheet } from "lucide-react";
 import { toast } from "sonner";
 import { fmtINR, monthName } from "@/lib/format";
 import { exportPayrollRegisterXlsx } from "@/lib/payroll-xlsx";
+import { syncSalaryAdvanceRepayments } from "@/lib/advance-sync";
 
 export const Route = createFileRoute("/_app/payroll")({ component: PayrollPage });
 
