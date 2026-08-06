@@ -110,16 +110,25 @@ export async function exportPayrollRegisterXlsx(month: number, year: number, row
     };
   });
 
-  // Data rows
+  // Data rows — live Excel formulas so the sheet recalculates when inputs change
   rows.forEach((r, idx) => {
     const rowNum = 6 + idx;
-    const values: (string | number)[] = [
+    const R = rowNum;
+    const f = (formula: string, result: number) => ({ formula, result });
+    const values: any[] = [
       r.code, r.name, r.designation, r.department, r.days,
       r.basic, r.hra, r.allowances, r.medical, r.leaveEnc, r.bonus, r.special,
-      r.gross, r.incentive,
-      r.pf, r.esi, r.tds, r.advance, r.totalDed,
-      r.employerPf, r.employerEsi, r.edli, r.pfAdmin,
-      r.netPay, r.pan, r.bankAc,
+      f(`SUM(F${R}:L${R})`, r.gross), r.incentive,
+      r.pf > 0 ? f(`ROUND(MIN(15000,F${R})*0.12,0)`, r.pf) : 0,
+      r.esi > 0 ? f(`ROUNDUP(F${R}*0.0075,0)`, r.esi) : 0,
+      r.tds, r.advance,
+      f(`SUM(O${R}:R${R})`, r.totalDed),
+      r.employerPf > 0 ? f(`ROUND(MIN(15000,F${R})*0.12,0)`, r.employerPf) : 0,
+      r.employerEsi > 0 ? f(`ROUNDUP(F${R}*0.0325,0)`, r.employerEsi) : 0,
+      r.edli > 0 ? f(`ROUND(MIN(15000,F${R})*0.005,0)`, r.edli) : 0,
+      r.pfAdmin > 0 ? f(`ROUND(MIN(15000,F${R})*0.005,0)`, r.pfAdmin) : 0,
+      f(`M${R}+N${R}-S${R}`, r.netPay),
+      r.pan, r.bankAc,
     ];
     const row = ws.getRow(rowNum);
     values.forEach((v, i) => {
