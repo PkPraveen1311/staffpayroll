@@ -110,16 +110,25 @@ export async function exportPayrollRegisterXlsx(month: number, year: number, row
     };
   });
 
-  // Data rows
+  // Data rows — live Excel formulas so the sheet recalculates when inputs change
   rows.forEach((r, idx) => {
     const rowNum = 6 + idx;
-    const values: (string | number)[] = [
+    const R = rowNum;
+    const f = (formula: string, result: number) => ({ formula, result });
+    const values: any[] = [
       r.code, r.name, r.designation, r.department, r.days,
       r.basic, r.hra, r.allowances, r.medical, r.leaveEnc, r.bonus, r.special,
-      r.gross, r.incentive,
-      r.pf, r.esi, r.tds, r.advance, r.totalDed,
-      r.employerPf, r.employerEsi, r.edli, r.pfAdmin,
-      r.netPay, r.pan, r.bankAc,
+      f(`SUM(F${R}:L${R})`, r.gross), r.incentive,
+      r.pf > 0 ? f(`ROUND(MIN(15000,F${R})*0.12,0)`, r.pf) : 0,
+      r.esi > 0 ? f(`ROUNDUP(F${R}*0.0075,0)`, r.esi) : 0,
+      r.tds, r.advance,
+      f(`SUM(O${R}:R${R})`, r.totalDed),
+      r.employerPf > 0 ? f(`ROUND(MIN(15000,F${R})*0.12,0)`, r.employerPf) : 0,
+      r.employerEsi > 0 ? f(`ROUNDUP(F${R}*0.0325,0)`, r.employerEsi) : 0,
+      r.edli > 0 ? f(`ROUND(MIN(15000,F${R})*0.005,0)`, r.edli) : 0,
+      r.pfAdmin > 0 ? f(`ROUND(MIN(15000,F${R})*0.005,0)`, r.pfAdmin) : 0,
+      f(`M${R}+N${R}-S${R}`, r.netPay),
+      r.pan, r.bankAc,
     ];
     const row = ws.getRow(rowNum);
     values.forEach((v, i) => {
@@ -140,7 +149,7 @@ export async function exportPayrollRegisterXlsx(month: number, year: number, row
       };
     }
     // Numeric formatting
-    const inr = '"₹"#,##0.00;[Red]("₹"#,##0.00)';
+    const inr = '"₹"#,##0;[Red]("₹"#,##0)';
     for (let col = 6; col <= 24; col++) {
       ws.getCell(rowNum, col).numFmt = inr;
       ws.getCell(rowNum, col).alignment = { horizontal: "right", vertical: "middle" };
@@ -178,7 +187,7 @@ export async function exportPayrollRegisterXlsx(month: number, year: number, row
   sumCols.forEach((col) => {
     const c = ws.getCell(totalRow, col);
     c.value = { formula: `SUM(${colLetter(col)}6:${colLetter(col)}${totalRow - 1})` };
-    c.numFmt = '"₹"#,##0.00';
+    c.numFmt = '"₹"#,##0';
   });
   ws.getRow(totalRow).height = 24;
   for (let col = 1; col <= headers.length; col++) {

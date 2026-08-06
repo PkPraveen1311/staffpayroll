@@ -11,13 +11,15 @@ import { Play, Printer, FileSpreadsheet } from "lucide-react";
 import { toast } from "sonner";
 import { fmtINR, monthName } from "@/lib/format";
 import { exportPayrollRegisterXlsx } from "@/lib/payroll-xlsx";
+import { syncSalaryAdvanceRepayments } from "@/lib/advance-sync";
 
 export const Route = createFileRoute("/_app/payroll")({ component: PayrollPage });
 
 const now = new Date();
 const monthsList = Array.from({ length: 12 }, (_, i) => i + 1);
 const yearsList = [now.getFullYear() - 1, now.getFullYear(), now.getFullYear() + 1];
-const round = (n: number) => Math.round(n * 100) / 100;
+// Salary amounts are rounded to whole rupees (ROUND). Statutory ESI keeps its ROUNDUP.
+const round = (n: number) => Math.round(n);
 
 function PayrollPage() {
   const qc = useQueryClient();
@@ -160,25 +162,26 @@ function PayrollPage() {
         const daysWorked = Math.min(daysInMonth, paidFullDates.size + payableHalfDays / 2 + halfDayCredit);
         const ratio = daysWorked / daysInMonth;
         const fullBasic = Number(e.basic_salary);
-        const basic = fullBasic * ratio;
-        const hra = Number(e.hra) * ratio;
-        const allow = Number(e.allowances) * ratio;
-        const medical = Number(e.medical_allowance ?? 0) * ratio;
-        const leaveEnc = Number(e.leave_encashment ?? 0) * ratio;
-        const bonus = Number(e.statutory_bonus ?? 0) * ratio;
-        const special = Number(e.special_allowance ?? 0) * ratio;
-        const incentive = incentiveMap.get(e.id) ?? 0;
-        const advance = advanceMap.get(e.id) ?? 0;
+        // ROUND each earning head to whole rupees, then derive gross/net from the rounded heads
+        const basic = round(fullBasic * ratio);
+        const hra = round(Number(e.hra) * ratio);
+        const allow = round(Number(e.allowances) * ratio);
+        const medical = round(Number(e.medical_allowance ?? 0) * ratio);
+        const leaveEnc = round(Number(e.leave_encashment ?? 0) * ratio);
+        const bonus = round(Number(e.statutory_bonus ?? 0) * ratio);
+        const special = round(Number(e.special_allowance ?? 0) * ratio);
+        const incentive = round(incentiveMap.get(e.id) ?? 0);
+        const advance = round(advanceMap.get(e.id) ?? 0);
 
         const pfWage = Math.min(15000, basic);
-        const employer_pf = e.pf_enabled ? pfWage * 0.12 : 0;
-        const edli = e.pf_enabled ? pfWage * 0.005 : 0;
-        const pf_admin_charges = e.pf_enabled ? pfWage * 0.005 : 0;
+        const employer_pf = e.pf_enabled ? round(pfWage * 0.12) : 0;
+        const edli = e.pf_enabled ? round(pfWage * 0.005) : 0;
+        const pf_admin_charges = e.pf_enabled ? round(pfWage * 0.005) : 0;
         const employer_esi = e.esi_enabled ? Math.ceil(basic * 0.0325) : 0;
 
         const gross = basic + hra + allow + medical + leaveEnc + bonus + special;
 
-        const pf = e.pf_enabled ? pfWage * 0.12 : 0;
+        const pf = e.pf_enabled ? round(pfWage * 0.12) : 0;
         const esi = e.esi_enabled ? Math.ceil(basic * 0.0075) : 0;
         let tds = 0;
         if (e.tds_enabled) {
@@ -189,20 +192,20 @@ function PayrollPage() {
           else if (annual > 900000) tax = (annual - 900000) * 0.15 + 45000;
           else if (annual > 600000) tax = (annual - 600000) * 0.10 + 15000;
           else if (annual > 300000) tax = (annual - 300000) * 0.05;
-          tds = Math.max(0, tax / 12);
+          tds = round(Math.max(0, tax / 12));
         }
         const totalDed = pf + esi + tds + advance;
         const net = gross + incentive - totalDed;
         return {
           payroll_run_id: runId, employee_id: e.id,
-          basic: round(basic), hra: round(hra), allowances: round(allow), gross: round(gross),
-          medical_allowance: round(medical), leave_encashment: round(leaveEnc),
-          statutory_bonus: round(bonus), special_allowance: round(special),
-          incentive: round(incentive), advance: round(advance),
-          pf: round(pf), esi: round(esi), tds: round(tds),
-          employer_pf: round(employer_pf), employer_esi: round(employer_esi),
-          edli: round(edli), pf_admin_charges: round(pf_admin_charges),
-          total_deductions: round(totalDed), net_pay: round(net), days_worked: daysWorked,
+          basic, hra, allowances: allow, gross,
+          medical_allowance: medical, leave_encashment: leaveEnc,
+          statutory_bonus: bonus, special_allowance: special,
+          incentive, advance,
+          pf, esi, tds,
+          employer_pf, employer_esi,
+          edli, pf_admin_charges,
+          total_deductions: totalDed, net_pay: net, days_worked: daysWorked,
         };
       });
 
@@ -212,11 +215,21 @@ function PayrollPage() {
       }
       const totalNet = slipRows.reduce((s, p) => s + p.net_pay, 0);
       await supabase.from("payroll_runs").update({ total_net: totalNet, status: "processed" }).eq("id", runId);
+
+      // Mirror salary advance deductions into the Advances ledger
+      const sync = await syncSalaryAdvanceRepayments(
+        month, year,
+        slipRows.map((p) => ({ employee_id: p.employee_id as string, advance: p.advance })),
+      );
       toast.success(`Payroll generated for ${monthName(month)} ${year}`);
+      if (sync.adjusted > 0) toast.success(`${fmtINR(sync.adjusted)} adjusted against outstanding advances`);
+      if (sync.unmatched > 0) toast.warning(`${fmtINR(sync.unmatched)} of advance deduction had no matching outstanding advance`);
       qc.invalidateQueries({ queryKey: ["payroll_run", month, year] });
       qc.invalidateQueries({ queryKey: ["payroll_register"] });
       qc.invalidateQueries({ queryKey: ["payroll_runs"] });
       qc.invalidateQueries({ queryKey: ["dashboard-stats"] });
+      qc.invalidateQueries({ queryKey: ["advances"] });
+      qc.invalidateQueries({ queryKey: ["advance-repayments"] });
     } catch (e: any) {
       toast.error(e.message);
     } finally {

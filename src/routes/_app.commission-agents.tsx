@@ -15,6 +15,44 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { fmtINR } from "@/lib/format";
 import { exportToXlsx } from "@/lib/xlsx-export";
+import { ExcelImportDialog } from "@/components/excel-import-dialog";
+import { pick, toBool, toDate, type SheetRow } from "@/lib/excel-import";
+
+const AGENT_TEMPLATE_HEADERS = [
+  "Code", "Name", "PAN", "Aadhaar", "Phone", "Email", "Address", "Department", "Designation",
+  "Joining Date", "Date of Birth", "Wedding Anniversary", "Bank Name", "Bank A/C", "IFSC", "TDS", "Status", "Notes",
+];
+const AGENT_TEMPLATE_SAMPLE = [
+  "AGT001", "Suresh Verma", "ABCDE1234F", "123412341234", "9876543210", "suresh@example.com", "Indore, MP",
+  "Sales", "Agent", "2024-04-01", "1990-01-20", "2018-11-05", "SBI", "1234567890", "SBIN0001234", "Yes", "active", "",
+];
+
+function mapAgentRow(row: SheetRow) {
+  const code = pick(row, "Code", "Agent Code");
+  const name = pick(row, "Name", "Full Name", "Agent");
+  if (!code) throw new Error("Code is required");
+  if (!name) throw new Error("Name is required");
+  return {
+    agent_code: code,
+    full_name: name,
+    pan: pick(row, "PAN").toUpperCase() || null,
+    aadhaar: pick(row, "Aadhaar") || null,
+    phone: pick(row, "Phone", "Mobile") || null,
+    email: pick(row, "Email") || null,
+    address: pick(row, "Address") || null,
+    department: pick(row, "Department") || null,
+    designation: pick(row, "Designation") || null,
+    joining_date: toDate(pick(row, "Joining Date", "DOJ")),
+    date_of_birth: toDate(pick(row, "Date of Birth", "DOB")),
+    wedding_anniversary: toDate(pick(row, "Wedding Anniversary", "Anniversary")),
+    bank_name: pick(row, "Bank Name") || null,
+    bank_account: pick(row, "Bank A/C", "Bank Account", "Account No") || null,
+    ifsc_code: pick(row, "IFSC", "IFSC Code").toUpperCase() || null,
+    tds_enabled: toBool(pick(row, "TDS"), true),
+    status: (pick(row, "Status") || "active").toLowerCase(),
+    notes: pick(row, "Notes") || null,
+  };
+}
 import { Plus, Trash2, Pencil, FileSpreadsheet, Printer } from "lucide-react";
 
 export const Route = createFileRoute("/_app/commission-agents")({
@@ -173,6 +211,33 @@ function CommissionAgentsPage() {
         <div className="flex items-end gap-2 flex-wrap">
           <Button variant="outline" onClick={exportAgents} disabled={!agents.length}><FileSpreadsheet className="h-4 w-4 mr-1" />Agents Excel</Button>
           <Button variant="outline" onClick={exportPayments} disabled={!payments.length}><FileSpreadsheet className="h-4 w-4 mr-1" />Payouts Excel</Button>
+          <ExcelImportDialog
+            title="Import commission agents from Excel"
+            description="Upload a sheet of agent details. The first row must contain column headers — download the template for the exact format."
+            templateName="Commission_Agent_Import_Template.xlsx"
+            templateHeaders={AGENT_TEMPLATE_HEADERS}
+            templateSample={AGENT_TEMPLATE_SAMPLE}
+            mapRow={mapAgentRow}
+            onImport={async (records) => {
+              const existing = new Map(agents.map((a) => [a.agent_code.trim().toLowerCase(), a.id]));
+              let created = 0, updated = 0;
+              for (const r of records) {
+                const id = existing.get(String(r.agent_code).trim().toLowerCase());
+                if (id) {
+                  const { error } = await supabase.from("commission_agents").update(r as never).eq("id", id);
+                  if (error) throw error;
+                  updated++;
+                } else {
+                  const { error } = await supabase.from("commission_agents").insert(r as never);
+                  if (error) throw error;
+                  created++;
+                }
+              }
+              qc.invalidateQueries({ queryKey: ["commission-agents"] });
+              qc.invalidateQueries({ queryKey: ["commission-agents-active"] });
+              return { created, updated };
+            }}
+          />
           <Button variant="outline" onClick={() => window.print()}><Printer className="h-4 w-4 mr-1" />Print</Button>
           <Button onClick={() => setEditing(emptyAgent())}><Plus className="h-4 w-4 mr-1" />New Agent</Button>
         </div>

@@ -13,6 +13,7 @@ import { Eye, Printer, Check, MessageCircle, Mail } from "lucide-react";
 import { fmtINR, monthName } from "@/lib/format";
 import { toast } from "sonner";
 import { generatePayslipPdf } from "@/lib/payslip-pdf";
+import { syncSalaryAdvanceRepayments } from "@/lib/advance-sync";
 
 export const Route = createFileRoute("/_app/payslips")({ component: PayslipsPage });
 
@@ -41,28 +42,46 @@ function PayslipsPage() {
   const run: any = runs.find((r: any) => r.id === effectiveRun);
 
   const saveIncentive = async (slip: any, incentive: number) => {
-    const advance = Number(slip.advance ?? 0);
-    const baseDed = Number(slip.total_deductions) - Number(slip.advance ?? 0);
-    const newTotalDed = baseDed + advance;
-    const net = Number(slip.gross) + incentive - newTotalDed;
-    const { error } = await supabase.from("payslips").update({ incentive, net_pay: Math.round(net * 100) / 100 }).eq("id", slip.id);
+    const newIncentive = Math.round(incentive);
+    const net = Number(slip.gross) + newIncentive - Number(slip.total_deductions);
+    const { error } = await supabase.from("payslips").update({ incentive: newIncentive, net_pay: Math.round(net) }).eq("id", slip.id);
     if (error) { toast.error(error.message); return; }
     toast.success("Incentive saved");
     await refreshTotals(slip.payroll_run_id);
   };
 
   const saveAdvance = async (slip: any, advance: number) => {
+    const newAdvance = Math.round(advance);
     const baseDed = Number(slip.total_deductions) - Number(slip.advance ?? 0);
-    const newTotalDed = baseDed + advance;
+    const newTotalDed = baseDed + newAdvance;
     const net = Number(slip.gross) + Number(slip.incentive ?? 0) - newTotalDed;
     const { error } = await supabase.from("payslips").update({
-      advance,
-      total_deductions: Math.round(newTotalDed * 100) / 100,
-      net_pay: Math.round(net * 100) / 100,
+      advance: newAdvance,
+      total_deductions: Math.round(newTotalDed),
+      net_pay: Math.round(net),
     }).eq("id", slip.id);
     if (error) { toast.error(error.message); return; }
     toast.success("Advance saved");
+    await syncRunAdvances(slip.payroll_run_id);
     await refreshTotals(slip.payroll_run_id);
+  };
+
+  // Re-mirror every advance deduction of this run into the Advances ledger
+  const syncRunAdvances = async (payrollRunId: string) => {
+    const target: any = runs.find((r: any) => r.id === payrollRunId);
+    if (!target) return;
+    const { data: all } = await supabase.from("payslips").select("employee_id, advance").eq("payroll_run_id", payrollRunId);
+    try {
+      const res = await syncSalaryAdvanceRepayments(
+        target.month, target.year,
+        (all ?? []).map((p: any) => ({ employee_id: p.employee_id, advance: Number(p.advance ?? 0) })),
+      );
+      if (res.unmatched > 0) toast.warning(`${fmtINR(res.unmatched)} of advance deduction has no matching outstanding advance`);
+      qc.invalidateQueries({ queryKey: ["advances"] });
+      qc.invalidateQueries({ queryKey: ["advance-repayments"] });
+    } catch (e: any) {
+      toast.error(e.message ?? "Could not update the advances ledger");
+    }
   };
 
   const refreshTotals = async (payrollRunId: string) => {

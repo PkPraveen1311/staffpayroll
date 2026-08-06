@@ -14,6 +14,55 @@ import { Plus, Pencil, Trash2, Search, Printer, FileSpreadsheet } from "lucide-r
 import { toast } from "sonner";
 import { fmtINR } from "@/lib/format";
 import { exportToXlsx } from "@/lib/xlsx-export";
+import { ExcelImportDialog } from "@/components/excel-import-dialog";
+import { pick, toBool, toDate, toNumber, type SheetRow } from "@/lib/excel-import";
+
+const EMP_TEMPLATE_HEADERS = [
+  "Code", "Name", "Email", "Phone", "Department", "Designation", "Joining Date", "Date of Birth",
+  "Wedding Anniversary", "PAN", "Bank A/C", "IFSC", "UAN", "PF No.", "ESI No.",
+  "Basic", "HRA", "Allowances", "Medical", "Leave Enc.", "Bonus", "Special", "PF", "ESI", "TDS", "Status",
+];
+const EMP_TEMPLATE_SAMPLE = [
+  "EMP001", "Ramesh Kumar", "ramesh@example.com", "9876543210", "Sales", "Executive", "2024-04-01", "1995-06-15",
+  "2020-02-14", "ABCDE1234F", "1234567890", "SBIN0001234", "100200300400", "PF/1234", "ESI/5678",
+  15000, 6000, 2000, 1250, 0, 1400, 3000, "Yes", "Yes", "No", "active",
+];
+
+function mapEmployeeRow(row: SheetRow) {
+  const code = pick(row, "Code", "Employee Code");
+  const name = pick(row, "Name", "Full Name", "Employee");
+  if (!code) throw new Error("Code is required");
+  if (!name) throw new Error("Name is required");
+  const email = pick(row, "Email");
+  return {
+    employee_code: code,
+    full_name: name,
+    email: email || `${code.toLowerCase()}@example.com`,
+    phone: pick(row, "Phone", "Mobile") || null,
+    department: pick(row, "Department") || null,
+    designation: pick(row, "Designation") || null,
+    joining_date: toDate(pick(row, "Joining Date", "DOJ")) ?? new Date().toISOString().slice(0, 10),
+    date_of_birth: toDate(pick(row, "Date of Birth", "DOB")),
+    wedding_anniversary: toDate(pick(row, "Wedding Anniversary", "Anniversary")),
+    pan: pick(row, "PAN").toUpperCase() || null,
+    bank_account: pick(row, "Bank A/C", "Bank Account", "Account No") || null,
+    ifsc_code: pick(row, "IFSC", "IFSC Code").toUpperCase() || null,
+    uan: pick(row, "UAN") || null,
+    pf_number: pick(row, "PF No.", "PF Number") || null,
+    esi_number: pick(row, "ESI No.", "ESI Number") || null,
+    basic_salary: toNumber(pick(row, "Basic", "Basic Salary")),
+    hra: toNumber(pick(row, "HRA")),
+    allowances: toNumber(pick(row, "Allowances", "Other Allowances")),
+    medical_allowance: toNumber(pick(row, "Medical", "Medical Allowance")),
+    leave_encashment: toNumber(pick(row, "Leave Enc.", "Leave Encashment")),
+    statutory_bonus: toNumber(pick(row, "Bonus", "Statutory Bonus")),
+    special_allowance: toNumber(pick(row, "Special", "Special Allowance")),
+    pf_enabled: toBool(pick(row, "PF"), true),
+    esi_enabled: toBool(pick(row, "ESI"), false),
+    tds_enabled: toBool(pick(row, "TDS"), false),
+    status: (pick(row, "Status") || "active").toLowerCase(),
+  };
+}
 
 export const Route = createFileRoute("/_app/employees")({
   component: EmployeesPage,
@@ -140,6 +189,32 @@ function EmployeesPage() {
         </div>
         <div className="flex gap-2 flex-wrap">
           <Button onClick={exportExcel} variant="outline"><FileSpreadsheet className="h-4 w-4 mr-1" />Excel</Button>
+          <ExcelImportDialog
+            title="Import employees from Excel"
+            description="Upload a sheet of employee details. The first row must contain column headers — download the template for the exact format."
+            templateName="Employee_Import_Template.xlsx"
+            templateHeaders={EMP_TEMPLATE_HEADERS}
+            templateSample={EMP_TEMPLATE_SAMPLE}
+            mapRow={mapEmployeeRow}
+            onImport={async (records) => {
+              const existing = new Map(employees.map((e) => [e.employee_code.trim().toLowerCase(), e.id]));
+              let created = 0, updated = 0;
+              for (const r of records) {
+                const id = existing.get(String(r.employee_code).trim().toLowerCase());
+                if (id) {
+                  const { error } = await supabase.from("employees").update(r as never).eq("id", id);
+                  if (error) throw error;
+                  updated++;
+                } else {
+                  const { error } = await supabase.from("employees").insert(r as any);
+                  if (error) throw error;
+                  created++;
+                }
+              }
+              qc.invalidateQueries({ queryKey: ["employees"] });
+              return { created, updated };
+            }}
+          />
           <Button onClick={() => window.print()} variant="outline"><Printer className="h-4 w-4 mr-1" />Print</Button>
           <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setEditing(null); }}>
             <DialogTrigger asChild>

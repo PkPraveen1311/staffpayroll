@@ -59,7 +59,7 @@ function CommissionPage() {
   const [amounts, setAmounts] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
 
-  const { data: agents = [] } = useQuery<Agent[]>({
+  const { data: agentsData } = useQuery<Agent[]>({
     queryKey: ["commission-agents-active"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -72,7 +72,7 @@ function CommissionPage() {
     },
   });
 
-  const { data: rows = [] } = useQuery<Payment[]>({
+  const { data: rowsData } = useQuery<Payment[]>({
     queryKey: ["commission-month", year, month],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -85,6 +85,8 @@ function CommissionPage() {
     },
   });
 
+  const agents = useMemo(() => agentsData ?? [], [agentsData]);
+  const rows = useMemo(() => rowsData ?? [], [rowsData]);
   const existing = useMemo(() => new Map(rows.map(r => [r.agent_id, r])), [rows]);
 
   useEffect(() => {
