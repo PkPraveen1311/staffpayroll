@@ -202,7 +202,7 @@ function EmployeesPage() {
               for (const r of records) {
                 const id = existing.get(String(r.employee_code).trim().toLowerCase());
                 if (id) {
-                  const { error } = await supabase.from("employees").update(r).eq("id", id);
+                  const { error } = await supabase.from("employees").update(r as never).eq("id", id);
                   if (error) throw error;
                   updated++;
                 } else {
