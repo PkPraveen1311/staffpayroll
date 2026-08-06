@@ -173,6 +173,33 @@ function CommissionAgentsPage() {
         <div className="flex items-end gap-2 flex-wrap">
           <Button variant="outline" onClick={exportAgents} disabled={!agents.length}><FileSpreadsheet className="h-4 w-4 mr-1" />Agents Excel</Button>
           <Button variant="outline" onClick={exportPayments} disabled={!payments.length}><FileSpreadsheet className="h-4 w-4 mr-1" />Payouts Excel</Button>
+          <ExcelImportDialog
+            title="Import commission agents from Excel"
+            description="Upload a sheet of agent details. The first row must contain column headers — download the template for the exact format."
+            templateName="Commission_Agent_Import_Template.xlsx"
+            templateHeaders={AGENT_TEMPLATE_HEADERS}
+            templateSample={AGENT_TEMPLATE_SAMPLE}
+            mapRow={mapAgentRow}
+            onImport={async (records) => {
+              const existing = new Map(agents.map((a) => [a.agent_code.trim().toLowerCase(), a.id]));
+              let created = 0, updated = 0;
+              for (const r of records) {
+                const id = existing.get(String(r.agent_code).trim().toLowerCase());
+                if (id) {
+                  const { error } = await supabase.from("commission_agents").update(r as never).eq("id", id);
+                  if (error) throw error;
+                  updated++;
+                } else {
+                  const { error } = await supabase.from("commission_agents").insert(r as never);
+                  if (error) throw error;
+                  created++;
+                }
+              }
+              qc.invalidateQueries({ queryKey: ["commission-agents"] });
+              qc.invalidateQueries({ queryKey: ["commission-agents-active"] });
+              return { created, updated };
+            }}
+          />
           <Button variant="outline" onClick={() => window.print()}><Printer className="h-4 w-4 mr-1" />Print</Button>
           <Button onClick={() => setEditing(emptyAgent())}><Plus className="h-4 w-4 mr-1" />New Agent</Button>
         </div>
