@@ -17,7 +17,8 @@ export const Route = createFileRoute("/_app/payroll")({ component: PayrollPage }
 const now = new Date();
 const monthsList = Array.from({ length: 12 }, (_, i) => i + 1);
 const yearsList = [now.getFullYear() - 1, now.getFullYear(), now.getFullYear() + 1];
-const round = (n: number) => Math.round(n * 100) / 100;
+// Salary amounts are rounded to whole rupees (ROUND). Statutory ESI keeps its ROUNDUP.
+const round = (n: number) => Math.round(n);
 
 function PayrollPage() {
   const qc = useQueryClient();
