@@ -214,11 +214,21 @@ function PayrollPage() {
       }
       const totalNet = slipRows.reduce((s, p) => s + p.net_pay, 0);
       await supabase.from("payroll_runs").update({ total_net: totalNet, status: "processed" }).eq("id", runId);
+
+      // Mirror salary advance deductions into the Advances ledger
+      const sync = await syncSalaryAdvanceRepayments(
+        month, year,
+        slipRows.map((p) => ({ employee_id: p.employee_id as string, advance: p.advance })),
+      );
       toast.success(`Payroll generated for ${monthName(month)} ${year}`);
+      if (sync.adjusted > 0) toast.success(`${fmtINR(sync.adjusted)} adjusted against outstanding advances`);
+      if (sync.unmatched > 0) toast.warning(`${fmtINR(sync.unmatched)} of advance deduction had no matching outstanding advance`);
       qc.invalidateQueries({ queryKey: ["payroll_run", month, year] });
       qc.invalidateQueries({ queryKey: ["payroll_register"] });
       qc.invalidateQueries({ queryKey: ["payroll_runs"] });
       qc.invalidateQueries({ queryKey: ["dashboard-stats"] });
+      qc.invalidateQueries({ queryKey: ["advances"] });
+      qc.invalidateQueries({ queryKey: ["advance-repayments"] });
     } catch (e: any) {
       toast.error(e.message);
     } finally {
