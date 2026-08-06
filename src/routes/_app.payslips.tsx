@@ -13,6 +13,7 @@ import { Eye, Printer, Check, MessageCircle, Mail } from "lucide-react";
 import { fmtINR, monthName } from "@/lib/format";
 import { toast } from "sonner";
 import { generatePayslipPdf } from "@/lib/payslip-pdf";
+import { syncSalaryAdvanceRepayments } from "@/lib/advance-sync";
 
 export const Route = createFileRoute("/_app/payslips")({ component: PayslipsPage });
 
