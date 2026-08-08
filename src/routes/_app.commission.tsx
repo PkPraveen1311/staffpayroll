@@ -210,7 +210,12 @@ function CommissionPage() {
         <Card className="bg-gradient-card border-border/60 shadow-elegant">
           <CardHeader>
             <CardTitle>Commission Register — {MONTHS[month - 1]} {year}</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Due Date: <span className="font-medium text-foreground">{dueDate || "—"}</span>
+              {"  •  "}Paid Date: <span className="font-medium text-foreground">{paidDate || "—"}</span>
+            </p>
           </CardHeader>
+
           <CardContent>
             <Table>
               <TableHeader>
