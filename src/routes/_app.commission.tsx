@@ -191,7 +191,16 @@ function CommissionPage() {
               </SelectContent>
             </Select>
           </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">Due Date</Label>
+            <Input type="date" className="w-40" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">Paid Date</Label>
+            <Input type="date" className="w-40" value={paidDate} onChange={(e) => setPaidDate(e.target.value)} />
+          </div>
           <Button variant="outline" onClick={exportExcel} disabled={!agents.length}><FileSpreadsheet className="h-4 w-4 mr-1" />Excel</Button>
+
           <Button variant="outline" onClick={() => window.print()}><Printer className="h-4 w-4 mr-1" />Print</Button>
           <Button onClick={saveAll} disabled={saving || !agents.length}><Save className="h-4 w-4 mr-1" />{saving ? "Saving…" : "Save Month"}</Button>
         </div>
