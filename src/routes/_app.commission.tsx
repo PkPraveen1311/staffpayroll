@@ -41,7 +41,7 @@ type Agent = {
 type Payment = {
   id: string; agent_id: string; paid_on: string; gross_amount: number;
   tds_rate: number; tds_amount: number; net_amount: number; notes: string | null;
-  month: number | null; year: number | null;
+  month: number | null; year: number | null; due_date: string | null;
 };
 
 function rateFor(a: Agent) {
@@ -89,6 +89,14 @@ function CommissionPage() {
   const rows = useMemo(() => rowsData ?? [], [rowsData]);
   const existing = useMemo(() => new Map(rows.map(r => [r.agent_id, r])), [rows]);
 
+  const defaultDue = useMemo(() => {
+    const d = new Date(year, month - 1 + 2, 7);
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-07`;
+  }, [month, year]);
+
+  const [dueDate, setDueDate] = useState(defaultDue);
+  const [paidDate, setPaidDate] = useState(defaultDue);
+
   useEffect(() => {
     const next: Record<string, string> = {};
     agents.forEach(a => {
@@ -96,7 +104,10 @@ function CommissionPage() {
       next[a.id] = r ? String(Number(r.gross_amount)) : "";
     });
     setAmounts(next);
-  }, [agents, existing]);
+    const first = rows[0];
+    setDueDate(first?.due_date ?? defaultDue);
+    setPaidDate(first?.paid_on ?? defaultDue);
+  }, [agents, existing, rows, defaultDue]);
 
   const computed = useMemo(() => agents.map(a => {
     const gross = Number(amounts[a.id] || 0);
@@ -107,9 +118,6 @@ function CommissionPage() {
 
   const totals = computed.reduce((t, r) => ({ gross: t.gross + r.gross, tds: t.tds + r.tds, net: t.net + r.net }), { gross: 0, tds: 0, net: 0 });
 
-  const daysInMonth = new Date(year, month, 0).getDate();
-  const paidOn = `${year}-${pad(month)}-${pad(daysInMonth)}`;
-
   const saveAll = async () => {
     setSaving(true);
     try {
@@ -117,7 +125,7 @@ function CommissionPage() {
         const row = existing.get(r.agent.id);
         if (r.gross > 0) {
           const payload = {
-            agent_id: r.agent.id, paid_on: row?.paid_on ?? paidOn, month, year,
+            agent_id: r.agent.id, paid_on: paidDate, due_date: dueDate, month, year,
             gross_amount: r.gross, tds_rate: r.rate, tds_amount: r.tds, net_amount: r.net,
           };
           const { error } = row
@@ -153,6 +161,8 @@ function CommissionPage() {
       "TDS %": r.rate,
       "TDS (194H)": r.tds,
       "Net Payable": r.net,
+      "Due Date": dueDate,
+      "Paid Date": paidDate,
     })),
     `${MONTHS[month - 1]} ${year}`,
   );
@@ -181,7 +191,16 @@ function CommissionPage() {
               </SelectContent>
             </Select>
           </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">Due Date</Label>
+            <Input type="date" className="w-40" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">Paid Date</Label>
+            <Input type="date" className="w-40" value={paidDate} onChange={(e) => setPaidDate(e.target.value)} />
+          </div>
           <Button variant="outline" onClick={exportExcel} disabled={!agents.length}><FileSpreadsheet className="h-4 w-4 mr-1" />Excel</Button>
+
           <Button variant="outline" onClick={() => window.print()}><Printer className="h-4 w-4 mr-1" />Print</Button>
           <Button onClick={saveAll} disabled={saving || !agents.length}><Save className="h-4 w-4 mr-1" />{saving ? "Saving…" : "Save Month"}</Button>
         </div>
@@ -191,7 +210,12 @@ function CommissionPage() {
         <Card className="bg-gradient-card border-border/60 shadow-elegant">
           <CardHeader>
             <CardTitle>Commission Register — {MONTHS[month - 1]} {year}</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Due Date: <span className="font-medium text-foreground">{dueDate || "—"}</span>
+              {"  •  "}Paid Date: <span className="font-medium text-foreground">{paidDate || "—"}</span>
+            </p>
           </CardHeader>
+
           <CardContent>
             <Table>
               <TableHeader>
