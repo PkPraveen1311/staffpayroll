@@ -41,7 +41,7 @@ type Agent = {
 type Payment = {
   id: string; agent_id: string; paid_on: string; gross_amount: number;
   tds_rate: number; tds_amount: number; net_amount: number; notes: string | null;
-  month: number | null; year: number | null;
+  month: number | null; year: number | null; due_date: string | null;
 };
 
 function rateFor(a: Agent) {
