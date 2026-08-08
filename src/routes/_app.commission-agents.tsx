@@ -17,6 +17,7 @@ import { fmtINR } from "@/lib/format";
 import { exportToXlsx } from "@/lib/xlsx-export";
 import { ExcelImportDialog } from "@/components/excel-import-dialog";
 import { pick, toBool, toDate, type SheetRow } from "@/lib/excel-import";
+import { importByCode } from "@/lib/excel-upsert";
 
 const AGENT_TEMPLATE_HEADERS = [
   "Code", "Name", "PAN", "Aadhaar", "Phone", "Email", "Address", "Department", "Designation",
