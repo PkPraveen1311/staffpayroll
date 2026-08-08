@@ -220,23 +220,10 @@ function CommissionAgentsPage() {
             templateSample={AGENT_TEMPLATE_SAMPLE}
             mapRow={mapAgentRow}
             onImport={async (records) => {
-              const existing = new Map(agents.map((a) => [a.agent_code.trim().toLowerCase(), a.id]));
-              let created = 0, updated = 0;
-              for (const r of records) {
-                const id = existing.get(String(r.agent_code).trim().toLowerCase());
-                if (id) {
-                  const { error } = await supabase.from("commission_agents").update(r as never).eq("id", id);
-                  if (error) throw error;
-                  updated++;
-                } else {
-                  const { error } = await supabase.from("commission_agents").insert(r as never);
-                  if (error) throw error;
-                  created++;
-                }
-              }
+              const res = await importByCode("commission_agents", "agent_code", agents as any[], records);
               qc.invalidateQueries({ queryKey: ["commission-agents"] });
               qc.invalidateQueries({ queryKey: ["commission-agents-active"] });
-              return { created, updated };
+              return res;
             }}
           />
           <Button variant="outline" onClick={() => window.print()}><Printer className="h-4 w-4 mr-1" />Print</Button>
