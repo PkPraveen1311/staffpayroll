@@ -1,0 +1,1 @@
+ALTER TABLE public.commission_payments ADD COLUMN IF NOT EXISTS due_date date;

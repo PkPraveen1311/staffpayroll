@@ -237,6 +237,7 @@ export type Database = {
         Row: {
           agent_id: string
           created_at: string
+          due_date: string | null
           gross_amount: number
           id: string
           month: number | null
@@ -251,6 +252,7 @@ export type Database = {
         Insert: {
           agent_id: string
           created_at?: string
+          due_date?: string | null
           gross_amount?: number
           id?: string
           month?: number | null
@@ -265,6 +267,7 @@ export type Database = {
         Update: {
           agent_id?: string
           created_at?: string
+          due_date?: string | null
           gross_amount?: number
           id?: string
           month?: number | null
