@@ -89,6 +89,14 @@ function CommissionPage() {
   const rows = useMemo(() => rowsData ?? [], [rowsData]);
   const existing = useMemo(() => new Map(rows.map(r => [r.agent_id, r])), [rows]);
 
+  const defaultDue = useMemo(() => {
+    const d = new Date(year, month - 1 + 2, 7);
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-07`;
+  }, [month, year]);
+
+  const [dueDate, setDueDate] = useState(defaultDue);
+  const [paidDate, setPaidDate] = useState(defaultDue);
+
   useEffect(() => {
     const next: Record<string, string> = {};
     agents.forEach(a => {
@@ -96,7 +104,10 @@ function CommissionPage() {
       next[a.id] = r ? String(Number(r.gross_amount)) : "";
     });
     setAmounts(next);
-  }, [agents, existing]);
+    const first = rows[0];
+    setDueDate(first?.due_date ?? defaultDue);
+    setPaidDate(first?.paid_on ?? defaultDue);
+  }, [agents, existing, rows, defaultDue]);
 
   const computed = useMemo(() => agents.map(a => {
     const gross = Number(amounts[a.id] || 0);
@@ -107,9 +118,6 @@ function CommissionPage() {
 
   const totals = computed.reduce((t, r) => ({ gross: t.gross + r.gross, tds: t.tds + r.tds, net: t.net + r.net }), { gross: 0, tds: 0, net: 0 });
 
-  const daysInMonth = new Date(year, month, 0).getDate();
-  const paidOn = `${year}-${pad(month)}-${pad(daysInMonth)}`;
-
   const saveAll = async () => {
     setSaving(true);
     try {
@@ -117,7 +125,7 @@ function CommissionPage() {
         const row = existing.get(r.agent.id);
         if (r.gross > 0) {
           const payload = {
-            agent_id: r.agent.id, paid_on: row?.paid_on ?? paidOn, month, year,
+            agent_id: r.agent.id, paid_on: paidDate, due_date: dueDate, month, year,
             gross_amount: r.gross, tds_rate: r.rate, tds_amount: r.tds, net_amount: r.net,
           };
           const { error } = row
