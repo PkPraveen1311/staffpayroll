@@ -161,6 +161,8 @@ function CommissionPage() {
       "TDS %": r.rate,
       "TDS (194H)": r.tds,
       "Net Payable": r.net,
+      "Due Date": dueDate,
+      "Paid Date": paidDate,
     })),
     `${MONTHS[month - 1]} ${year}`,
   );
