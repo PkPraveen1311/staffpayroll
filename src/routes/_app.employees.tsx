@@ -34,10 +34,12 @@ function mapEmployeeRow(row: SheetRow) {
   if (!code) throw new Error("Code is required");
   if (!name) throw new Error("Name is required");
   const email = pick(row, "Email");
+  if (!email) throw new Error("Email is required");
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error(`Email "${email}" is not valid`);
   return {
     employee_code: code,
     full_name: name,
-    email: email || `${code.toLowerCase()}@example.com`,
+    email,
     phone: pick(row, "Phone", "Mobile") || null,
     department: pick(row, "Department") || null,
     designation: pick(row, "Designation") || null,
