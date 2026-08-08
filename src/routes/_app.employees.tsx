@@ -16,6 +16,7 @@ import { fmtINR } from "@/lib/format";
 import { exportToXlsx } from "@/lib/xlsx-export";
 import { ExcelImportDialog } from "@/components/excel-import-dialog";
 import { pick, toBool, toDate, toNumber, type SheetRow } from "@/lib/excel-import";
+import { importByCode } from "@/lib/excel-upsert";
 
 const EMP_TEMPLATE_HEADERS = [
   "Code", "Name", "Email", "Phone", "Department", "Designation", "Joining Date", "Date of Birth",
@@ -34,10 +35,12 @@ function mapEmployeeRow(row: SheetRow) {
   if (!code) throw new Error("Code is required");
   if (!name) throw new Error("Name is required");
   const email = pick(row, "Email");
+  if (!email) throw new Error("Email is required");
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error(`Email "${email}" is not valid`);
   return {
     employee_code: code,
     full_name: name,
-    email: email || `${code.toLowerCase()}@example.com`,
+    email,
     phone: pick(row, "Phone", "Mobile") || null,
     department: pick(row, "Department") || null,
     designation: pick(row, "Designation") || null,
@@ -197,22 +200,9 @@ function EmployeesPage() {
             templateSample={EMP_TEMPLATE_SAMPLE}
             mapRow={mapEmployeeRow}
             onImport={async (records) => {
-              const existing = new Map(employees.map((e) => [e.employee_code.trim().toLowerCase(), e.id]));
-              let created = 0, updated = 0;
-              for (const r of records) {
-                const id = existing.get(String(r.employee_code).trim().toLowerCase());
-                if (id) {
-                  const { error } = await supabase.from("employees").update(r as never).eq("id", id);
-                  if (error) throw error;
-                  updated++;
-                } else {
-                  const { error } = await supabase.from("employees").insert(r as any);
-                  if (error) throw error;
-                  created++;
-                }
-              }
+              const res = await importByCode("employees", "employee_code", employees as any[], records);
               qc.invalidateQueries({ queryKey: ["employees"] });
-              return { created, updated };
+              return res;
             }}
           />
           <Button onClick={() => window.print()} variant="outline"><Printer className="h-4 w-4 mr-1" />Print</Button>
