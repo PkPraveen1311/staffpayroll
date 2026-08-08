@@ -16,6 +16,7 @@ import { fmtINR } from "@/lib/format";
 import { exportToXlsx } from "@/lib/xlsx-export";
 import { ExcelImportDialog } from "@/components/excel-import-dialog";
 import { pick, toBool, toDate, toNumber, type SheetRow } from "@/lib/excel-import";
+import { importByCode } from "@/lib/excel-upsert";
 
 const EMP_TEMPLATE_HEADERS = [
   "Code", "Name", "Email", "Phone", "Department", "Designation", "Joining Date", "Date of Birth",
