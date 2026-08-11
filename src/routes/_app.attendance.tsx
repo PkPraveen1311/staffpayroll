@@ -380,7 +380,7 @@ function MonthlyView({ cfg, people }: { cfg: RosterConfig; people: any[] }) {
       const { data, error } = await supabase
         .from(cfg.table)
         .select("*")
-        .eq(cfg.fk, selected)
+        .eq(cfg.fk as any, selected)
         .gte("date", monthStart)
         .lte("date", monthEnd);
       if (error) throw error;
