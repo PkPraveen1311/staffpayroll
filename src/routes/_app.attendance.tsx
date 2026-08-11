@@ -30,79 +30,147 @@ const STATUS_META: Record<StatusKey, { label: string; short: string; hours: numb
 
 const STATUS_ORDER: StatusKey[] = ["present", "absent", "half-day", "leave", "week-off", "tour"];
 
+type RosterConfig = {
+  kind: "employee" | "agent";
+  table: "attendance" | "agent_attendance";
+  fk: "employee_id" | "agent_id";
+  peopleTable: "employees" | "commission_agents";
+  codeField: "employee_code" | "agent_code";
+  peopleKey: string;
+  recordsKey: string;
+  label: string;
+  labelPlural: string;
+  emptyMsg: string;
+};
+
+const EMPLOYEE_CFG: RosterConfig = {
+  kind: "employee", table: "attendance", fk: "employee_id", peopleTable: "employees",
+  codeField: "employee_code", peopleKey: "employees-min", recordsKey: "attendance",
+  label: "Employee", labelPlural: "Employees", emptyMsg: "Add employees first.",
+};
+
+const AGENT_CFG: RosterConfig = {
+  kind: "agent", table: "agent_attendance", fk: "agent_id", peopleTable: "commission_agents",
+  codeField: "agent_code", peopleKey: "agents-min", recordsKey: "agent-attendance",
+  label: "Agent", labelPlural: "Commission Agents", emptyMsg: "Add commission agents first.",
+};
+
+function usePeople(cfg: RosterConfig) {
+  return useQuery({
+    queryKey: [cfg.peopleKey],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from(cfg.peopleTable)
+        .select(`id, full_name, ${cfg.codeField}, department`)
+        .eq("status", "active")
+        .order("full_name");
+      if (error) throw error;
+      return (data ?? []) as any[];
+    },
+  });
+}
+
 function AttendancePage() {
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold">Attendance</h1>
+        <p className="text-sm text-muted-foreground">Mark daily attendance or review a full month — for employees and commission agents.</p>
+      </div>
+
+      <Tabs defaultValue="employees" className="space-y-6">
+        <TabsList>
+          <TabsTrigger value="employees">Employees</TabsTrigger>
+          <TabsTrigger value="agents">Commission Agents</TabsTrigger>
+        </TabsList>
+        <TabsContent value="employees">
+          <AttendanceSection cfg={EMPLOYEE_CFG} />
+        </TabsContent>
+        <TabsContent value="agents">
+          <AttendanceSection cfg={AGENT_CFG} />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
+
+function AttendanceSection({ cfg }: { cfg: RosterConfig }) {
+  const { data: people = [] } = usePeople(cfg);
+  return (
+    <Tabs defaultValue="daily" className="space-y-6">
+      <TabsList>
+        <TabsTrigger value="daily">Daily</TabsTrigger>
+        <TabsTrigger value="monthly">Monthly (per {cfg.label.toLowerCase()})</TabsTrigger>
+      </TabsList>
+      <TabsContent value="daily" className="space-y-6">
+        <DailyRoster cfg={cfg} people={people} />
+      </TabsContent>
+      <TabsContent value="monthly">
+        <MonthlyView cfg={cfg} people={people} />
+      </TabsContent>
+    </Tabs>
+  );
+}
+
+function DailyRoster({ cfg, people }: { cfg: RosterConfig; people: any[] }) {
   const qc = useQueryClient();
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [search, setSearch] = useState("");
   const [dept, setDept] = useState<string>("all");
 
-  const { data: employees = [] } = useQuery({
-    queryKey: ["employees-min"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("employees")
-        .select("id, full_name, employee_code, department")
-        .eq("status", "active")
-        .order("full_name");
-      if (error) throw error;
-      return data;
-    },
-  });
-
   const { data: records = [] } = useQuery({
-    queryKey: ["attendance", date],
+    queryKey: [cfg.recordsKey, date],
     queryFn: async () => {
-      const { data, error } = await supabase.from("attendance").select("*").eq("date", date);
+      const { data, error } = await supabase.from(cfg.table).select("*").eq("date", date);
       if (error) throw error;
-      return data;
+      return (data ?? []) as any[];
     },
   });
 
-  const recMap = useMemo(() => new Map(records.map((r: any) => [r.employee_id, r])), [records]);
+  const recMap = useMemo(() => new Map(records.map((r: any) => [r[cfg.fk], r])), [records, cfg.fk]);
 
   const departments = useMemo(() => {
     const s = new Set<string>();
-    employees.forEach((e: any) => e.department && s.add(e.department));
+    people.forEach((e: any) => e.department && s.add(e.department));
     return Array.from(s).sort();
-  }, [employees]);
+  }, [people]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return employees.filter((e: any) => {
+    return people.filter((e: any) => {
       if (dept !== "all" && (e.department || "") !== dept) return false;
       if (!q) return true;
       return (
         e.full_name.toLowerCase().includes(q) ||
-        (e.employee_code || "").toLowerCase().includes(q) ||
+        (e[cfg.codeField] || "").toLowerCase().includes(q) ||
         (e.department || "").toLowerCase().includes(q)
       );
     });
-  }, [employees, search, dept]);
+  }, [people, search, dept, cfg.codeField]);
 
   const counts = useMemo(() => {
     const c: Record<string, number> = { present: 0, absent: 0, "half-day": 0, leave: 0, "week-off": 0, tour: 0, unmarked: 0 };
-    employees.forEach((e: any) => {
+    people.forEach((e: any) => {
       const r: any = recMap.get(e.id);
       if (!r) c.unmarked++;
       else if (c[r.status] !== undefined) c[r.status]++;
     });
     return c;
-  }, [employees, recMap]);
+  }, [people, recMap]);
 
-  const setStatus = async (employee_id: string, status: StatusKey) => {
-    const existing: any = recMap.get(employee_id);
+  const setStatus = async (personId: string, status: StatusKey) => {
+    const existing: any = recMap.get(personId);
     const hours = STATUS_META[status].hours;
     if (existing && existing.status === status) {
-      // toggle off: delete
-      const { error } = await supabase.from("attendance").delete().eq("id", existing.id);
+      const { error } = await supabase.from(cfg.table).delete().eq("id", existing.id);
       if (error) return toast.error(error.message);
     } else {
       const { error } = existing
-        ? await supabase.from("attendance").update({ status, hours }).eq("id", existing.id)
-        : await supabase.from("attendance").insert({ employee_id, date, status, hours });
+        ? await supabase.from(cfg.table).update({ status, hours }).eq("id", existing.id)
+        : await supabase.from(cfg.table).insert({ [cfg.fk]: personId, date, status, hours } as any);
       if (error) return toast.error(error.message);
     }
-    qc.invalidateQueries({ queryKey: ["attendance", date] });
+    qc.invalidateQueries({ queryKey: [cfg.recordsKey, date] });
   };
 
   const bulkMark = async (status: StatusKey, onlyUnmarked = false) => {
@@ -114,27 +182,27 @@ function AttendancePage() {
     targets.forEach((e: any) => {
       const ex: any = recMap.get(e.id);
       if (ex) toUpdate.push(ex.id);
-      else toInsert.push({ employee_id: e.id, date, status, hours });
+      else toInsert.push({ [cfg.fk]: e.id, date, status, hours });
     });
     if (toInsert.length) {
-      const { error } = await supabase.from("attendance").insert(toInsert);
+      const { error } = await supabase.from(cfg.table).insert(toInsert as any);
       if (error) return toast.error(error.message);
     }
     if (!onlyUnmarked && toUpdate.length) {
-      const { error } = await supabase.from("attendance").update({ status, hours }).in("id", toUpdate);
+      const { error } = await supabase.from(cfg.table).update({ status, hours }).in("id", toUpdate);
       if (error) return toast.error(error.message);
     }
     toast.success(`Marked ${targets.length} as ${STATUS_META[status].label}`);
-    qc.invalidateQueries({ queryKey: ["attendance", date] });
+    qc.invalidateQueries({ queryKey: [cfg.recordsKey, date] });
   };
 
   const clearDay = async () => {
-    const ids = records.filter((r: any) => filtered.some((e: any) => e.id === r.employee_id)).map((r: any) => r.id);
+    const ids = records.filter((r: any) => filtered.some((e: any) => e.id === r[cfg.fk])).map((r: any) => r.id);
     if (!ids.length) return toast.info("Nothing to clear");
-    const { error } = await supabase.from("attendance").delete().in("id", ids);
+    const { error } = await supabase.from(cfg.table).delete().in("id", ids);
     if (error) return toast.error(error.message);
     toast.success("Cleared attendance");
-    qc.invalidateQueries({ queryKey: ["attendance", date] });
+    qc.invalidateQueries({ queryKey: [cfg.recordsKey, date] });
   };
 
   const today = new Date().toISOString().slice(0, 10);
@@ -146,197 +214,177 @@ function AttendancePage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Attendance</h1>
-        <p className="text-sm text-muted-foreground">Mark daily attendance or review a full month per employee.</p>
+      <div className="flex items-end gap-2 flex-wrap justify-end">
+        <Button variant="outline" size="icon" onClick={() => shiftDate(-1)} aria-label="Previous day">‹</Button>
+        <div className="space-y-1">
+          <Label className="text-xs">Date</Label>
+          <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-44" />
+        </div>
+        <Button variant="outline" size="icon" onClick={() => shiftDate(1)} aria-label="Next day">›</Button>
+        <Button variant="outline" onClick={() => setDate(today)}><Calendar className="h-4 w-4 mr-1" /> Today</Button>
       </div>
 
-      <Tabs defaultValue="daily" className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="daily">Daily</TabsTrigger>
-          <TabsTrigger value="monthly">Monthly (per employee)</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="daily" className="space-y-6">
-          <div className="flex items-end gap-2 flex-wrap justify-end">
-            <Button variant="outline" size="icon" onClick={() => shiftDate(-1)} aria-label="Previous day">‹</Button>
-            <div className="space-y-1">
-              <Label className="text-xs">Date</Label>
-              <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-44" />
-            </div>
-            <Button variant="outline" size="icon" onClick={() => shiftDate(1)} aria-label="Next day">›</Button>
-            <Button variant="outline" onClick={() => setDate(today)}><Calendar className="h-4 w-4 mr-1" /> Today</Button>
-          </div>
-
-          {/* Summary cards */}
-          <div className="grid grid-cols-2 md:grid-cols-7 gap-3">
-            {STATUS_ORDER.map((s) => {
-              const m = STATUS_META[s];
-              const Icon = m.icon;
-              return (
-                <Card key={s} className={cn("border bg-gradient-card shadow-elegant", m.cls.replace(/hover:[^\s]+/g, ""))}>
-                  <CardContent className="p-3 flex items-center justify-between">
-                    <div>
-                      <div className="text-xs uppercase tracking-wide opacity-80">{m.label}</div>
-                      <div className="text-2xl font-bold leading-none mt-1">{counts[s]}</div>
-                    </div>
-                    <Icon className="h-5 w-5 opacity-80" />
-                  </CardContent>
-                </Card>
-              );
-            })}
-            <Card className="border bg-gradient-card shadow-elegant border-border/60">
+      {/* Summary cards */}
+      <div className="grid grid-cols-2 md:grid-cols-7 gap-3">
+        {STATUS_ORDER.map((s) => {
+          const m = STATUS_META[s];
+          const Icon = m.icon;
+          return (
+            <Card key={s} className={cn("border bg-gradient-card shadow-elegant", m.cls.replace(/hover:[^\s]+/g, ""))}>
               <CardContent className="p-3 flex items-center justify-between">
                 <div>
-                  <div className="text-xs uppercase tracking-wide text-muted-foreground">Unmarked</div>
-                  <div className="text-2xl font-bold leading-none mt-1">{counts.unmarked}</div>
+                  <div className="text-xs uppercase tracking-wide opacity-80">{m.label}</div>
+                  <div className="text-2xl font-bold leading-none mt-1">{counts[s]}</div>
                 </div>
-                <Clock className="h-5 w-5 text-muted-foreground" />
+                <Icon className="h-5 w-5 opacity-80" />
               </CardContent>
             </Card>
+          );
+        })}
+        <Card className="border bg-gradient-card shadow-elegant border-border/60">
+          <CardContent className="p-3 flex items-center justify-between">
+            <div>
+              <div className="text-xs uppercase tracking-wide text-muted-foreground">Unmarked</div>
+              <div className="text-2xl font-bold leading-none mt-1">{counts.unmarked}</div>
+            </div>
+            <Clock className="h-5 w-5 text-muted-foreground" />
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Filters + bulk actions */}
+      <Card className="bg-gradient-card border-border/60 shadow-elegant">
+        <CardContent className="p-4 flex flex-wrap gap-3 items-center justify-between">
+          <div className="flex flex-wrap gap-2 items-center">
+            <div className="relative">
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search name or code…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-8 w-56"
+              />
+            </div>
+            {departments.length > 0 && (
+              <select
+                className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+                value={dept}
+                onChange={(e) => setDept(e.target.value)}
+              >
+                <option value="all">All departments</option>
+                {departments.map((d) => (
+                  <option key={d} value={d}>{d}</option>
+                ))}
+              </select>
+            )}
           </div>
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" variant="outline" onClick={() => bulkMark("present", true)}>
+              <Check className="h-4 w-4 mr-1" /> Fill unmarked: Present
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => bulkMark("present")}>All Present</Button>
+            <Button size="sm" variant="outline" onClick={() => bulkMark("week-off")}>All Week-off</Button>
+            <Button size="sm" variant="ghost" onClick={clearDay}>
+              <Eraser className="h-4 w-4 mr-1" /> Clear day
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
-          {/* Filters + bulk actions */}
-          <Card className="bg-gradient-card border-border/60 shadow-elegant">
-            <CardContent className="p-4 flex flex-wrap gap-3 items-center justify-between">
-              <div className="flex flex-wrap gap-2 items-center">
-                <div className="relative">
-                  <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search name or code…"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    className="pl-8 w-56"
-                  />
-                </div>
-                {departments.length > 0 && (
-                  <select
-                    className="h-9 rounded-md border border-input bg-background px-2 text-sm"
-                    value={dept}
-                    onChange={(e) => setDept(e.target.value)}
-                  >
-                    <option value="all">All departments</option>
-                    {departments.map((d) => (
-                      <option key={d} value={d}>{d}</option>
-                    ))}
-                  </select>
-                )}
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <Button size="sm" variant="outline" onClick={() => bulkMark("present", true)}>
-                  <Check className="h-4 w-4 mr-1" /> Fill unmarked: Present
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => bulkMark("present")}>All Present</Button>
-                <Button size="sm" variant="outline" onClick={() => bulkMark("week-off")}>All Week-off</Button>
-                <Button size="sm" variant="ghost" onClick={clearDay}>
-                  <Eraser className="h-4 w-4 mr-1" /> Clear day
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Roster */}
-          <Card className="bg-gradient-card border-border/60 shadow-elegant">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Employee</TableHead>
-                  <TableHead className="hidden md:table-cell">Department</TableHead>
-                  <TableHead>Mark</TableHead>
-                  <TableHead className="text-right">Hours</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filtered.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
-                      {employees.length === 0 ? "Add employees first." : "No employees match your filter."}
+      {/* Roster */}
+      <Card className="bg-gradient-card border-border/60 shadow-elegant">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>{cfg.label}</TableHead>
+              <TableHead className="hidden md:table-cell">Department</TableHead>
+              <TableHead>Mark</TableHead>
+              <TableHead className="text-right">Hours</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filtered.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
+                  {people.length === 0 ? cfg.emptyMsg : "No records match your filter."}
+                </TableCell>
+              </TableRow>
+            ) : (
+              filtered.map((e: any) => {
+                const rec: any = recMap.get(e.id);
+                const cur = rec?.status as StatusKey | undefined;
+                return (
+                  <TableRow key={e.id}>
+                    <TableCell>
+                      <div className="font-medium">{e.full_name}</div>
+                      <div className="text-xs text-muted-foreground font-mono">{e[cfg.codeField]}</div>
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell">{e.department || "—"}</TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap gap-1">
+                        {STATUS_ORDER.map((s) => {
+                          const m = STATUS_META[s];
+                          const active = cur === s;
+                          return (
+                            <button
+                              key={s}
+                              onClick={() => setStatus(e.id, s)}
+                              title={m.label}
+                              className={cn(
+                                "h-8 w-8 rounded-md border text-xs font-bold transition-all",
+                                active
+                                  ? m.cls + " ring-2 ring-offset-0 ring-current scale-105"
+                                  : "border-border/60 text-muted-foreground hover:bg-muted/40",
+                              )}
+                            >
+                              {m.short}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {cur ? (
+                        <Badge variant={STATUS_META[cur].badge}>{rec?.hours ?? 0}h</Badge>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
                     </TableCell>
                   </TableRow>
-                ) : (
-                  filtered.map((e: any) => {
-                    const rec: any = recMap.get(e.id);
-                    const cur = rec?.status as StatusKey | undefined;
-                    return (
-                      <TableRow key={e.id}>
-                        <TableCell>
-                          <div className="font-medium">{e.full_name}</div>
-                          <div className="text-xs text-muted-foreground font-mono">{e.employee_code}</div>
-                        </TableCell>
-                        <TableCell className="hidden md:table-cell">{e.department || "—"}</TableCell>
-                        <TableCell>
-                          <div className="flex flex-wrap gap-1">
-                            {STATUS_ORDER.map((s) => {
-                              const m = STATUS_META[s];
-                              const active = cur === s;
-                              return (
-                                <button
-                                  key={s}
-                                  onClick={() => setStatus(e.id, s)}
-                                  title={m.label}
-                                  className={cn(
-                                    "h-8 w-8 rounded-md border text-xs font-bold transition-all",
-                                    active
-                                      ? m.cls + " ring-2 ring-offset-0 ring-current scale-105"
-                                      : "border-border/60 text-muted-foreground hover:bg-muted/40",
-                                  )}
-                                >
-                                  {m.short}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {cur ? (
-                            <Badge variant={STATUS_META[cur].badge}>{rec?.hours ?? 0}h</Badge>
-                          ) : (
-                            <span className="text-xs text-muted-foreground">—</span>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })
-                )}
-              </TableBody>
-            </Table>
-          </Card>
-
-          <AgentRoster date={date} />
-        </TabsContent>
-
-        <TabsContent value="monthly">
-          <MonthlyView employees={employees} />
-        </TabsContent>
-      </Tabs>
+                );
+              })
+            )}
+          </TableBody>
+        </Table>
+      </Card>
     </div>
   );
 }
 
-function MonthlyView({ employees }: { employees: any[] }) {
+function MonthlyView({ cfg, people }: { cfg: RosterConfig; people: any[] }) {
   const qc = useQueryClient();
   const now = new Date();
-  const [empId, setEmpId] = useState<string>("");
+  const [personId, setPersonId] = useState<string>("");
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
 
-  const selected = empId || employees[0]?.id || "";
+  const selected = personId || people[0]?.id || "";
   const monthStart = `${year}-${String(month).padStart(2, "0")}-01`;
   const daysInMonth = new Date(year, month, 0).getDate();
   const monthEnd = `${year}-${String(month).padStart(2, "0")}-${String(daysInMonth).padStart(2, "0")}`;
 
   const { data: monthRecs = [] } = useQuery({
-    queryKey: ["attendance-month", selected, year, month],
+    queryKey: [`${cfg.recordsKey}-month`, selected, year, month],
     enabled: !!selected,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("attendance")
+        .from(cfg.table)
         .select("*")
-        .eq("employee_id", selected)
+        .eq(cfg.fk as any, selected)
         .gte("date", monthStart)
         .lte("date", monthEnd);
       if (error) throw error;
-      return data;
+      return (data ?? []) as any[];
     },
   });
 
@@ -361,15 +409,15 @@ function MonthlyView({ employees }: { employees: any[] }) {
     const existing: any = byDate.get(dateStr);
     const hours = STATUS_META[status].hours;
     if (existing && existing.status === status) {
-      const { error } = await supabase.from("attendance").delete().eq("id", existing.id);
+      const { error } = await supabase.from(cfg.table).delete().eq("id", existing.id);
       if (error) return toast.error(error.message);
     } else {
       const { error } = existing
-        ? await supabase.from("attendance").update({ status, hours }).eq("id", existing.id)
-        : await supabase.from("attendance").insert({ employee_id: selected, date: dateStr, status, hours });
+        ? await supabase.from(cfg.table).update({ status, hours }).eq("id", existing.id)
+        : await supabase.from(cfg.table).insert({ [cfg.fk]: selected, date: dateStr, status, hours } as any);
       if (error) return toast.error(error.message);
     }
-    qc.invalidateQueries({ queryKey: ["attendance-month", selected, year, month] });
+    qc.invalidateQueries({ queryKey: [`${cfg.recordsKey}-month`, selected, year, month] });
   };
 
   const shiftMonth = (delta: number) => {
@@ -387,16 +435,16 @@ function MonthlyView({ employees }: { employees: any[] }) {
         <CardContent className="p-4 flex flex-wrap gap-3 items-end justify-between">
           <div className="flex flex-wrap gap-3 items-end">
             <div className="space-y-1">
-              <Label className="text-xs">Employee</Label>
+              <Label className="text-xs">{cfg.label}</Label>
               <select
                 className="h-9 rounded-md border border-input bg-background px-2 text-sm min-w-[14rem]"
                 value={selected}
-                onChange={(e) => setEmpId(e.target.value)}
+                onChange={(e) => setPersonId(e.target.value)}
               >
-                {employees.length === 0 && <option value="">No employees</option>}
-                {employees.map((e: any) => (
+                {people.length === 0 && <option value="">No {cfg.labelPlural.toLowerCase()}</option>}
+                {people.map((e: any) => (
                   <option key={e.id} value={e.id}>
-                    {e.full_name} ({e.employee_code})
+                    {e.full_name} ({e[cfg.codeField]})
                   </option>
                 ))}
               </select>
@@ -440,7 +488,7 @@ function MonthlyView({ employees }: { employees: any[] }) {
       <Card className="bg-gradient-card border-border/60 shadow-elegant">
         <CardContent className="p-4">
           {!selected ? (
-            <div className="text-center text-muted-foreground py-8">Select an employee to view monthly attendance.</div>
+            <div className="text-center text-muted-foreground py-8">Select {cfg.kind === "agent" ? "an agent" : "an employee"} to view monthly attendance.</div>
           ) : (
             <>
               <div className="grid grid-cols-7 gap-2 mb-2 text-xs uppercase tracking-wide text-muted-foreground text-center">
@@ -490,140 +538,5 @@ function MonthlyView({ employees }: { employees: any[] }) {
         </CardContent>
       </Card>
     </div>
-  );
-}
-
-function AgentRoster({ date }: { date: string }) {
-  const qc = useQueryClient();
-  const [search, setSearch] = useState("");
-
-  const { data: agents = [] } = useQuery({
-    queryKey: ["agents-min"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("commission_agents")
-        .select("id, full_name, agent_code, department")
-        .eq("status", "active")
-        .order("full_name");
-      if (error) throw error;
-      return data ?? [];
-    },
-  });
-
-  const { data: records = [] } = useQuery({
-    queryKey: ["agent-attendance", date],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("agent_attendance").select("*").eq("date", date);
-      if (error) throw error;
-      return data ?? [];
-    },
-  });
-
-  const recMap = useMemo(() => new Map((records as any[]).map((r) => [r.agent_id, r])), [records]);
-
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return agents as any[];
-    return (agents as any[]).filter(
-      (a) => a.full_name.toLowerCase().includes(q) || (a.agent_code || "").toLowerCase().includes(q),
-    );
-  }, [agents, search]);
-
-  const setStatus = async (agent_id: string, status: StatusKey) => {
-    const existing: any = recMap.get(agent_id);
-    const hours = STATUS_META[status].hours;
-    if (existing && existing.status === status) {
-      const { error } = await supabase.from("agent_attendance").delete().eq("id", existing.id);
-      if (error) return toast.error(error.message);
-    } else {
-      const { error } = existing
-        ? await supabase.from("agent_attendance").update({ status, hours }).eq("id", existing.id)
-        : await supabase.from("agent_attendance").insert({ agent_id, date, status, hours });
-      if (error) return toast.error(error.message);
-    }
-    qc.invalidateQueries({ queryKey: ["agent-attendance", date] });
-  };
-
-  return (
-    <Card className="bg-gradient-card border-border/60 shadow-elegant">
-      <CardContent className="p-4 pb-0 flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 className="text-lg font-semibold">Commission Agents</h2>
-          <p className="text-xs text-muted-foreground">Separate attendance register for third-party agents.</p>
-        </div>
-        <div className="relative">
-          <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search agent…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-8 w-56"
-          />
-        </div>
-      </CardContent>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Agent</TableHead>
-            <TableHead className="hidden md:table-cell">Department</TableHead>
-            <TableHead>Mark</TableHead>
-            <TableHead className="text-right">Hours</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {filtered.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
-                No active commission agents.
-              </TableCell>
-            </TableRow>
-          ) : (
-            filtered.map((a: any) => {
-              const rec: any = recMap.get(a.id);
-              const cur = rec?.status as StatusKey | undefined;
-              return (
-                <TableRow key={a.id}>
-                  <TableCell>
-                    <div className="font-medium">{a.full_name}</div>
-                    <div className="text-xs text-muted-foreground font-mono">{a.agent_code}</div>
-                  </TableCell>
-                  <TableCell className="hidden md:table-cell">{a.department || "—"}</TableCell>
-                  <TableCell>
-                    <div className="flex flex-wrap gap-1">
-                      {STATUS_ORDER.map((s) => {
-                        const m = STATUS_META[s];
-                        const active = cur === s;
-                        return (
-                          <button
-                            key={s}
-                            onClick={() => setStatus(a.id, s)}
-                            title={m.label}
-                            className={cn(
-                              "h-8 w-8 rounded-md border text-xs font-bold transition-all",
-                              active
-                                ? m.cls + " ring-2 ring-offset-0 ring-current scale-105"
-                                : "border-border/60 text-muted-foreground hover:bg-muted/40",
-                            )}
-                          >
-                            {m.short}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {cur ? (
-                      <Badge variant={STATUS_META[cur].badge}>{rec?.hours ?? 0}h</Badge>
-                    ) : (
-                      <span className="text-xs text-muted-foreground">—</span>
-                    )}
-                  </TableCell>
-                </TableRow>
-              );
-            })
-          )}
-        </TableBody>
-      </Table>
-    </Card>
   );
 }
