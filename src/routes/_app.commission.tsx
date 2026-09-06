@@ -95,25 +95,41 @@ function CommissionPage() {
       const to = `${year}-${pad(month)}-${pad(new Date(year, month, 0).getDate())}`;
       const { data, error } = await supabase
         .from("agent_attendance")
-        .select("agent_id, status")
+        .select("agent_id, status, date")
         .gte("date", from)
         .lte("date", to);
       if (error) throw error;
-      return (data ?? []) as { agent_id: string; status: string }[];
+      return (data ?? []) as { agent_id: string; status: string; date: string }[];
     },
   });
 
+  // Same paid-days formula as payroll: present + tour + allowed week-offs + leave +
+  // half/2, where unused week-off credits upgrade half-days (1 credit = 2 half-days).
   const paidDays = useMemo(() => {
-    const m = new Map<string, number>();
-    const counts = new Map<string, { absent: number; half: number }>();
+    const ALLOWED_WEEK_OFFS = 4; // default, same as employees without a custom entry
+    type Counts = { presentDates: Set<string>; weekOffDates: Set<string>; leaveDates: Set<string>; halfDates: Set<string> };
+    const countsMap = new Map<string, Counts>();
     (attData ?? []).forEach(r => {
-      const c = counts.get(r.agent_id) ?? { absent: 0, half: 0 };
-      if (r.status === "absent") c.absent += 1;
-      else if (r.status === "half") c.half += 1;
-      counts.set(r.agent_id, c);
+      const c = countsMap.get(r.agent_id) ?? {
+        presentDates: new Set<string>(),
+        weekOffDates: new Set<string>(),
+        leaveDates: new Set<string>(),
+        halfDates: new Set<string>(),
+      };
+      if (r.status === "present" || r.status === "tour") c.presentDates.add(r.date);
+      else if (r.status === "week-off") c.weekOffDates.add(r.date);
+      else if (r.status === "leave") c.leaveDates.add(r.date);
+      else if (r.status === "half-day") c.halfDates.add(r.date);
+      countsMap.set(r.agent_id, c);
     });
-    counts.forEach((c, id) => {
-      m.set(id, Math.max(0, daysInMonth - c.absent - c.half / 2));
+    const m = new Map<string, number>();
+    countsMap.forEach((c, id) => {
+      const countedWeekOffDates = [...c.weekOffDates].sort().slice(0, ALLOWED_WEEK_OFFS);
+      const remainingAllowed = ALLOWED_WEEK_OFFS - countedWeekOffDates.length;
+      const paidFullDates = new Set<string>([...c.presentDates, ...countedWeekOffDates, ...c.leaveDates]);
+      const payableHalfDays = [...c.halfDates].filter(d => !paidFullDates.has(d)).length;
+      const halfDayCredit = Math.min(remainingAllowed, payableHalfDays / 2);
+      m.set(id, Math.min(daysInMonth, paidFullDates.size + payableHalfDays / 2 + halfDayCredit));
     });
     return m;
   }, [attData, daysInMonth]);
