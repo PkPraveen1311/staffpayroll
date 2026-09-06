@@ -173,12 +173,14 @@ export type Database = {
           department: string | null
           designation: string | null
           email: string | null
+          fixed_monthly_amount: number
           full_name: string
           id: string
           ifsc_code: string | null
           joining_date: string | null
           notes: string | null
           pan: string | null
+          pay_type: string
           phone: string | null
           status: string
           tds_enabled: boolean
@@ -196,12 +198,14 @@ export type Database = {
           department?: string | null
           designation?: string | null
           email?: string | null
+          fixed_monthly_amount?: number
           full_name: string
           id?: string
           ifsc_code?: string | null
           joining_date?: string | null
           notes?: string | null
           pan?: string | null
+          pay_type?: string
           phone?: string | null
           status?: string
           tds_enabled?: boolean
@@ -219,12 +223,14 @@ export type Database = {
           department?: string | null
           designation?: string | null
           email?: string | null
+          fixed_monthly_amount?: number
           full_name?: string
           id?: string
           ifsc_code?: string | null
           joining_date?: string | null
           notes?: string | null
           pan?: string | null
+          pay_type?: string
           phone?: string | null
           status?: string
           tds_enabled?: boolean
