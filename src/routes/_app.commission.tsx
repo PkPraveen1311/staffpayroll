@@ -290,6 +290,7 @@ function CommissionPage() {
                   <TableHead>PAN</TableHead>
                   <TableHead>Bank</TableHead>
                   <TableHead>Basis</TableHead>
+                  <TableHead className="text-right">Fixed Incentive</TableHead>
                   <TableHead className="text-right">Commission</TableHead>
                   <TableHead className="text-right">TDS %</TableHead>
                   <TableHead className="text-right">TDS (194H)</TableHead>
@@ -298,7 +299,7 @@ function CommissionPage() {
               </TableHeader>
               <TableBody>
                 {computed.length === 0 ? (
-                  <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">No active commission agents. Add them in the Commission Agents tab.</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground py-8">No active commission agents. Add them in the Commission Agents tab.</TableCell></TableRow>
                 ) : computed.map((r, i) => (
                   <TableRow key={r.agent.id}>
                     <TableCell>{i + 1}</TableCell>
