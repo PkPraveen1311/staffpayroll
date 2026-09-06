@@ -21,11 +21,11 @@ import { importByCode } from "@/lib/excel-upsert";
 
 const AGENT_TEMPLATE_HEADERS = [
   "Code", "Name", "PAN", "Aadhaar", "Phone", "Email", "Address", "Department", "Designation",
-  "Joining Date", "Date of Birth", "Wedding Anniversary", "Bank Name", "Bank A/C", "IFSC", "TDS", "Status", "Notes",
+  "Joining Date", "Date of Birth", "Wedding Anniversary", "Bank Name", "Bank A/C", "IFSC", "Pay Type", "Fixed Monthly", "TDS", "Status", "Notes",
 ];
 const AGENT_TEMPLATE_SAMPLE = [
   "AGT001", "Suresh Verma", "ABCDE1234F", "123412341234", "9876543210", "suresh@example.com", "Indore, MP",
-  "Sales", "Agent", "2024-04-01", "1990-01-20", "2018-11-05", "SBI", "1234567890", "SBIN0001234", "Yes", "active", "",
+  "Sales", "Agent", "2024-04-01", "1990-01-20", "2018-11-05", "SBI", "1234567890", "SBIN0001234", "Commission", "0", "Yes", "active", "",
 ];
 
 function mapAgentRow(row: SheetRow) {
@@ -49,6 +49,8 @@ function mapAgentRow(row: SheetRow) {
     bank_name: pick(row, "Bank Name") || null,
     bank_account: pick(row, "Bank A/C", "Bank Account", "Account No") || null,
     ifsc_code: pick(row, "IFSC", "IFSC Code").toUpperCase() || null,
+    pay_type: (pick(row, "Pay Type").toLowerCase().startsWith("fix") ? "fixed" : "commission"),
+    fixed_monthly_amount: Number(pick(row, "Fixed Monthly", "Fixed Incentive") || 0) || 0,
     tds_enabled: toBool(pick(row, "TDS"), true),
     status: (pick(row, "Status") || "active").toLowerCase(),
     notes: pick(row, "Notes") || null,
@@ -76,6 +78,7 @@ type Agent = {
   ifsc_code: string | null; bank_name: string | null; tds_enabled: boolean; status: string; notes: string | null;
   department: string | null; designation: string | null; joining_date: string | null;
   date_of_birth: string | null; wedding_anniversary: string | null;
+  pay_type: string; fixed_monthly_amount: number;
 };
 
 type Payment = {
@@ -91,6 +94,7 @@ const emptyAgent = (): Partial<Agent> => ({
   agent_code: "", full_name: "", pan: "", aadhaar: "", phone: "", email: "", address: "",
   bank_account: "", ifsc_code: "", bank_name: "", tds_enabled: true, status: "active", notes: "",
   department: "", designation: "", joining_date: "", date_of_birth: "", wedding_anniversary: "",
+  pay_type: "commission", fixed_monthly_amount: 0,
 });
 
 
@@ -162,6 +166,8 @@ function CommissionAgentsPage() {
       joining_date: editing.joining_date || null,
       date_of_birth: editing.date_of_birth || null,
       wedding_anniversary: editing.wedding_anniversary || null,
+      pay_type: editing.pay_type === "fixed" ? "fixed" : "commission",
+      fixed_monthly_amount: editing.pay_type === "fixed" ? Number(editing.fixed_monthly_amount || 0) : 0,
     };
     const { error } = editing.id
       ? await supabase.from("commission_agents").update(payload).eq("id", editing.id)
@@ -193,6 +199,7 @@ function CommissionAgentsPage() {
     PAN: a.pan ?? "", Aadhaar: a.aadhaar ?? "",
     Phone: a.phone ?? "", Email: a.email ?? "", Address: a.address ?? "",
     Bank: a.bank_name ?? "", "Account No.": a.bank_account ?? "", IFSC: a.ifsc_code ?? "",
+    "Pay Type": a.pay_type === "fixed" ? "Fixed" : "Commission", "Fixed Monthly": Number(a.fixed_monthly_amount ?? 0),
     TDS: a.tds_enabled ? "Yes" : "No", "TDS Rate %": tdsRateFor(a), Status: a.status,
   })), "Agents");
 
@@ -390,6 +397,21 @@ function CommissionAgentsPage() {
                   </SelectContent>
                 </Select>
               </div>
+              <div className="space-y-1.5"><Label>Pay type</Label>
+                <Select value={editing.pay_type ?? "commission"} onValueChange={(v) => setEditing({ ...editing, pay_type: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="commission">Commission on sales</SelectItem>
+                    <SelectItem value="fixed">Fixed monthly incentive (attendance based)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {editing.pay_type === "fixed" && (
+                <div className="space-y-1.5"><Label>Fixed monthly incentive (₹)</Label>
+                  <Input type="number" min="0" value={String(editing.fixed_monthly_amount ?? 0)} onChange={(e) => setEditing({ ...editing, fixed_monthly_amount: Number(e.target.value) })} />
+                  <p className="text-xs text-muted-foreground">Prorated by attendance in the Commission register.</p>
+                </div>
+              )}
               <div className="flex items-center justify-between sm:col-span-2 rounded-lg border border-border/60 p-3">
                 <div>
                   <Label>Deduct TDS (Section 194H)</Label>
