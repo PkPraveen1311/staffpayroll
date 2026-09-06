@@ -150,10 +150,12 @@ function CommissionPage() {
     const next: Record<string, string> = {};
     agents.forEach(a => {
       const r = existing.get(a.id);
-      if (r) next[a.id] = String(Number(r.gross_amount));
-      else if (a.pay_type === "fixed") {
+      if (r) {
         const days = paidDays.get(a.id) ?? daysInMonth;
-        next[a.id] = String(Math.round((Number(a.fixed_monthly_amount || 0) * days) / daysInMonth));
+        const fixedPart = a.pay_type === "fixed"
+          ? Math.round((Number(a.fixed_monthly_amount || 0) * days) / daysInMonth)
+          : 0;
+        next[a.id] = String(Math.max(0, Number(r.gross_amount) - fixedPart));
       } else next[a.id] = "";
     });
     setAmounts(next);
@@ -163,11 +165,15 @@ function CommissionPage() {
   }, [agents, existing, rows, defaultDue, paidDays, daysInMonth]);
 
   const computed = useMemo(() => agents.map(a => {
-    const gross = Number(amounts[a.id] || 0);
     const days = paidDays.get(a.id) ?? daysInMonth;
+    const fixed = a.pay_type === "fixed"
+      ? Math.round((Number(a.fixed_monthly_amount || 0) * days) / daysInMonth)
+      : 0;
+    const commission = Number(amounts[a.id] || 0);
+    const gross = fixed + commission;
     const rate = rateFor(a);
     const tds = Math.round((gross * rate) / 100);
-    return { agent: a, gross, rate, tds, net: gross - tds, days };
+    return { agent: a, fixed, commission, gross, rate, tds, net: gross - tds, days };
   }), [agents, amounts, paidDays, daysInMonth]);
 
   const totals = computed.reduce((t, r) => ({ gross: t.gross + r.gross, tds: t.tds + r.tds, net: t.net + r.net }), { gross: 0, tds: 0, net: 0 });
