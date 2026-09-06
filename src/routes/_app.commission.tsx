@@ -36,6 +36,7 @@ type Agent = {
   id: string; agent_code: string; full_name: string; pan: string | null;
   bank_account: string | null; ifsc_code: string | null; bank_name: string | null;
   tds_enabled: boolean; status: string;
+  pay_type: string; fixed_monthly_amount: number;
 };
 
 type Payment = {
@@ -64,7 +65,7 @@ function CommissionPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("commission_agents")
-        .select("id, agent_code, full_name, pan, bank_account, ifsc_code, bank_name, tds_enabled, status")
+        .select("id, agent_code, full_name, pan, bank_account, ifsc_code, bank_name, tds_enabled, status, pay_type, fixed_monthly_amount")
         .eq("status", "active")
         .order("full_name");
       if (error) throw error;
@@ -85,6 +86,38 @@ function CommissionPage() {
     },
   });
 
+  const daysInMonth = useMemo(() => new Date(year, month, 0).getDate(), [month, year]);
+
+  const { data: attData } = useQuery({
+    queryKey: ["agent-attendance-month", year, month],
+    queryFn: async () => {
+      const from = `${year}-${pad(month)}-01`;
+      const to = `${year}-${pad(month)}-${pad(new Date(year, month, 0).getDate())}`;
+      const { data, error } = await supabase
+        .from("agent_attendance")
+        .select("agent_id, status")
+        .gte("date", from)
+        .lte("date", to);
+      if (error) throw error;
+      return (data ?? []) as { agent_id: string; status: string }[];
+    },
+  });
+
+  const paidDays = useMemo(() => {
+    const m = new Map<string, number>();
+    const counts = new Map<string, { absent: number; half: number }>();
+    (attData ?? []).forEach(r => {
+      const c = counts.get(r.agent_id) ?? { absent: 0, half: 0 };
+      if (r.status === "absent") c.absent += 1;
+      else if (r.status === "half") c.half += 1;
+      counts.set(r.agent_id, c);
+    });
+    counts.forEach((c, id) => {
+      m.set(id, Math.max(0, daysInMonth - c.absent - c.half / 2));
+    });
+    return m;
+  }, [attData, daysInMonth]);
+
   const agents = useMemo(() => agentsData ?? [], [agentsData]);
   const rows = useMemo(() => rowsData ?? [], [rowsData]);
   const existing = useMemo(() => new Map(rows.map(r => [r.agent_id, r])), [rows]);
@@ -101,20 +134,25 @@ function CommissionPage() {
     const next: Record<string, string> = {};
     agents.forEach(a => {
       const r = existing.get(a.id);
-      next[a.id] = r ? String(Number(r.gross_amount)) : "";
+      if (r) next[a.id] = String(Number(r.gross_amount));
+      else if (a.pay_type === "fixed") {
+        const days = paidDays.get(a.id) ?? daysInMonth;
+        next[a.id] = String(Math.round((Number(a.fixed_monthly_amount || 0) * days) / daysInMonth));
+      } else next[a.id] = "";
     });
     setAmounts(next);
     const first = rows[0];
     setDueDate(first?.due_date ?? defaultDue);
     setPaidDate(first?.paid_on ?? defaultDue);
-  }, [agents, existing, rows, defaultDue]);
+  }, [agents, existing, rows, defaultDue, paidDays, daysInMonth]);
 
   const computed = useMemo(() => agents.map(a => {
     const gross = Number(amounts[a.id] || 0);
+    const days = paidDays.get(a.id) ?? daysInMonth;
     const rate = rateFor(a);
     const tds = Math.round((gross * rate) / 100);
-    return { agent: a, gross, rate, tds, net: gross - tds };
-  }), [agents, amounts]);
+    return { agent: a, gross, rate, tds, net: gross - tds, days };
+  }), [agents, amounts, paidDays, daysInMonth]);
 
   const totals = computed.reduce((t, r) => ({ gross: t.gross + r.gross, tds: t.tds + r.tds, net: t.net + r.net }), { gross: 0, tds: 0, net: 0 });
 
@@ -157,6 +195,9 @@ function CommissionPage() {
       Bank: r.agent.bank_name ?? "",
       "Account No.": r.agent.bank_account ?? "",
       IFSC: r.agent.ifsc_code ?? "",
+      "Pay Type": r.agent.pay_type === "fixed" ? "Fixed" : "Commission",
+      "Fixed Monthly": r.agent.pay_type === "fixed" ? Number(r.agent.fixed_monthly_amount || 0) : "",
+      "Paid Days": r.agent.pay_type === "fixed" ? r.days : "",
       Commission: r.gross,
       "TDS %": r.rate,
       "TDS (194H)": r.tds,
@@ -172,7 +213,7 @@ function CommissionPage() {
       <div className="flex items-end justify-between flex-wrap gap-4 print:hidden">
         <div>
           <h1 className="text-3xl font-bold">Monthly Commission</h1>
-          <p className="text-sm text-muted-foreground">Enter commission month-wise for third-party agents — TDS u/s 194H is computed automatically.</p>
+          <p className="text-sm text-muted-foreground">Enter commission month-wise for third-party agents. Fixed-incentive agents are auto-prorated on attendance; TDS u/s 194H is computed automatically.</p>
         </div>
         <div className="flex items-end gap-2 flex-wrap">
           <div className="space-y-1.5">
@@ -224,6 +265,7 @@ function CommissionPage() {
                   <TableHead>Agent</TableHead>
                   <TableHead>PAN</TableHead>
                   <TableHead>Bank</TableHead>
+                  <TableHead>Basis</TableHead>
                   <TableHead className="text-right">Commission</TableHead>
                   <TableHead className="text-right">TDS %</TableHead>
                   <TableHead className="text-right">TDS (194H)</TableHead>
@@ -232,7 +274,7 @@ function CommissionPage() {
               </TableHeader>
               <TableBody>
                 {computed.length === 0 ? (
-                  <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">No active commission agents. Add them in the Commission Agents tab.</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">No active commission agents. Add them in the Commission Agents tab.</TableCell></TableRow>
                 ) : computed.map((r, i) => (
                   <TableRow key={r.agent.id}>
                     <TableCell>{i + 1}</TableCell>
@@ -244,6 +286,14 @@ function CommissionPage() {
                     <TableCell className="text-xs">
                       <div>{r.agent.bank_name || "—"}</div>
                       <div className="text-muted-foreground font-mono">{r.agent.bank_account || "—"}</div>
+                    </TableCell>
+                    <TableCell className="text-xs">
+                      {r.agent.pay_type === "fixed" ? (
+                        <div>
+                          <Badge variant="outline">Fixed</Badge>
+                          <div className="text-muted-foreground mt-1">{fmtINR(Number(r.agent.fixed_monthly_amount || 0))} · {r.days}/{daysInMonth} days</div>
+                        </div>
+                      ) : <Badge variant="secondary">Commission</Badge>}
                     </TableCell>
                     <TableCell className="text-right">
                       <Input
