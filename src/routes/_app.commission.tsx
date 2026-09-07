@@ -321,13 +321,19 @@ function CommissionPage() {
                       ) : <Badge variant="secondary">Commission</Badge>}
                     </TableCell>
                     <TableCell className="text-right">
+                      <div className="font-medium">{fmtINR(r.fixed)}</div>
+                      {r.agent.pay_type === "fixed" && (
+                        <div className="text-xs text-muted-foreground print:hidden">{r.days}/{daysInMonth} days</div>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
                       <Input
                         type="number" min="0"
                         className="h-8 w-32 ml-auto text-right print:hidden"
                         value={amounts[r.agent.id] ?? ""}
                         onChange={(e) => setAmounts({ ...amounts, [r.agent.id]: e.target.value })}
                       />
-                      <span className="hidden print:inline">{fmtINR(r.gross)}</span>
+                      <span className="hidden print:inline">{fmtINR(r.commission)}</span>
                     </TableCell>
                     <TableCell className="text-right"><Badge variant="secondary">{r.rate}%</Badge></TableCell>
                     <TableCell className="text-right">{fmtINR(r.tds)}</TableCell>
