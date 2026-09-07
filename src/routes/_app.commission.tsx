@@ -151,7 +151,7 @@ function CommissionPage() {
     agents.forEach(a => {
       const r = existing.get(a.id);
       if (r) {
-        const days = paidDays.get(a.id) ?? daysInMonth;
+        const days = paidDays.get(a.id) ?? 0;
         const fixedPart = a.pay_type === "fixed"
           ? Math.round((Number(a.fixed_monthly_amount || 0) * days) / daysInMonth)
           : 0;
@@ -165,7 +165,7 @@ function CommissionPage() {
   }, [agents, existing, rows, defaultDue, paidDays, daysInMonth]);
 
   const computed = useMemo(() => agents.map(a => {
-    const days = paidDays.get(a.id) ?? daysInMonth;
+    const days = paidDays.get(a.id) ?? 0;
     const fixed = a.pay_type === "fixed"
       ? Math.round((Number(a.fixed_monthly_amount || 0) * days) / daysInMonth)
       : 0;
