@@ -21,6 +21,7 @@ import { Route as AppLeavesRouteImport } from './routes/_app.leaves'
 import { Route as AppLeaveHistoryRouteImport } from './routes/_app.leave-history'
 import { Route as AppIntegrationsRouteImport } from './routes/_app.integrations'
 import { Route as AppEmployeesRouteImport } from './routes/_app.employees'
+import { Route as AppCommissionSlipsRouteImport } from './routes/_app.commission-slips'
 import { Route as AppCommissionAgentsRouteImport } from './routes/_app.commission-agents'
 import { Route as AppCommissionRouteImport } from './routes/_app.commission'
 import { Route as AppChallansRouteImport } from './routes/_app.challans'
@@ -88,6 +89,11 @@ const AppEmployeesRoute = AppEmployeesRouteImport.update({
   path: '/employees',
   getParentRoute: () => AppRoute,
 } as any)
+const AppCommissionSlipsRoute = AppCommissionSlipsRouteImport.update({
+  id: '/commission-slips',
+  path: '/commission-slips',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppCommissionAgentsRoute = AppCommissionAgentsRouteImport.update({
   id: '/commission-agents',
   path: '/commission-agents',
@@ -135,6 +141,7 @@ export interface FileRoutesByFullPath {
   '/challans': typeof AppChallansRoute
   '/commission': typeof AppCommissionRoute
   '/commission-agents': typeof AppCommissionAgentsRoute
+  '/commission-slips': typeof AppCommissionSlipsRoute
   '/employees': typeof AppEmployeesRoute
   '/integrations': typeof AppIntegrationsRoute
   '/leave-history': typeof AppLeaveHistoryRoute
@@ -154,6 +161,7 @@ export interface FileRoutesByTo {
   '/challans': typeof AppChallansRoute
   '/commission': typeof AppCommissionRoute
   '/commission-agents': typeof AppCommissionAgentsRoute
+  '/commission-slips': typeof AppCommissionSlipsRoute
   '/employees': typeof AppEmployeesRoute
   '/integrations': typeof AppIntegrationsRoute
   '/leave-history': typeof AppLeaveHistoryRoute
@@ -176,6 +184,7 @@ export interface FileRoutesById {
   '/_app/challans': typeof AppChallansRoute
   '/_app/commission': typeof AppCommissionRoute
   '/_app/commission-agents': typeof AppCommissionAgentsRoute
+  '/_app/commission-slips': typeof AppCommissionSlipsRoute
   '/_app/employees': typeof AppEmployeesRoute
   '/_app/integrations': typeof AppIntegrationsRoute
   '/_app/leave-history': typeof AppLeaveHistoryRoute
@@ -199,6 +208,7 @@ export interface FileRouteTypes {
     | '/challans'
     | '/commission'
     | '/commission-agents'
+    | '/commission-slips'
     | '/employees'
     | '/integrations'
     | '/leave-history'
@@ -218,6 +228,7 @@ export interface FileRouteTypes {
     | '/challans'
     | '/commission'
     | '/commission-agents'
+    | '/commission-slips'
     | '/employees'
     | '/integrations'
     | '/leave-history'
@@ -239,6 +250,7 @@ export interface FileRouteTypes {
     | '/_app/challans'
     | '/_app/commission'
     | '/_app/commission-agents'
+    | '/_app/commission-slips'
     | '/_app/employees'
     | '/_app/integrations'
     | '/_app/leave-history'
@@ -342,6 +354,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppEmployeesRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/commission-slips': {
+      id: '/_app/commission-slips'
+      path: '/commission-slips'
+      fullPath: '/commission-slips'
+      preLoaderRoute: typeof AppCommissionSlipsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/commission-agents': {
       id: '/_app/commission-agents'
       path: '/commission-agents'
@@ -402,6 +421,7 @@ interface AppRouteChildren {
   AppChallansRoute: typeof AppChallansRoute
   AppCommissionRoute: typeof AppCommissionRoute
   AppCommissionAgentsRoute: typeof AppCommissionAgentsRoute
+  AppCommissionSlipsRoute: typeof AppCommissionSlipsRoute
   AppEmployeesRoute: typeof AppEmployeesRoute
   AppIntegrationsRoute: typeof AppIntegrationsRoute
   AppLeaveHistoryRoute: typeof AppLeaveHistoryRoute
@@ -421,6 +441,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppChallansRoute: AppChallansRoute,
   AppCommissionRoute: AppCommissionRoute,
   AppCommissionAgentsRoute: AppCommissionAgentsRoute,
+  AppCommissionSlipsRoute: AppCommissionSlipsRoute,
   AppEmployeesRoute: AppEmployeesRoute,
   AppIntegrationsRoute: AppIntegrationsRoute,
   AppLeaveHistoryRoute: AppLeaveHistoryRoute,
