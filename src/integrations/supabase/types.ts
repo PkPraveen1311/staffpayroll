@@ -52,6 +52,82 @@ export type Database = {
           },
         ]
       }
+      agent_advance_repayments: {
+        Row: {
+          advance_id: string
+          amount: number
+          created_at: string
+          id: string
+          notes: string | null
+          repaid_on: string
+          updated_at: string
+        }
+        Insert: {
+          advance_id: string
+          amount: number
+          created_at?: string
+          id?: string
+          notes?: string | null
+          repaid_on?: string
+          updated_at?: string
+        }
+        Update: {
+          advance_id?: string
+          amount?: number
+          created_at?: string
+          id?: string
+          notes?: string | null
+          repaid_on?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_advance_repayments_advance_id_fkey"
+            columns: ["advance_id"]
+            isOneToOne: false
+            referencedRelation: "agent_advances"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agent_advances: {
+        Row: {
+          agent_id: string
+          amount: number
+          created_at: string
+          given_on: string
+          id: string
+          notes: string | null
+          updated_at: string
+        }
+        Insert: {
+          agent_id: string
+          amount: number
+          created_at?: string
+          given_on?: string
+          id?: string
+          notes?: string | null
+          updated_at?: string
+        }
+        Update: {
+          agent_id?: string
+          amount?: number
+          created_at?: string
+          given_on?: string
+          id?: string
+          notes?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_advances_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "commission_agents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agent_attendance: {
         Row: {
           agent_id: string
@@ -241,6 +317,7 @@ export type Database = {
       }
       commission_payments: {
         Row: {
+          advance: number
           agent_id: string
           created_at: string
           due_date: string | null
@@ -256,6 +333,7 @@ export type Database = {
           year: number | null
         }
         Insert: {
+          advance?: number
           agent_id: string
           created_at?: string
           due_date?: string | null
@@ -271,6 +349,7 @@ export type Database = {
           year?: number | null
         }
         Update: {
+          advance?: number
           agent_id?: string
           created_at?: string
           due_date?: string | null
