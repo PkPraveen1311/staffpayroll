@@ -469,6 +469,83 @@ function AdvancesPage() {
 
       <Card className="bg-gradient-card border-border/60 shadow-elegant">
         <CardHeader className="flex flex-row items-center justify-between gap-3">
+          <div>
+            <CardTitle>Employee Ledger</CardTitle>
+            <p className="text-xs text-muted-foreground mt-1">One running account per employee — every advance adds, every repayment subtracts.</p>
+          </div>
+          <div className="w-64">
+            <Select value={filterEmp} onValueChange={setFilterEmp}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All employees</SelectItem>
+                {employees.map(e => <SelectItem key={e.id} value={e.id}>{e.full_name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {ledgers.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-6 text-center">No ledger entries yet.</p>
+          ) : (
+            <Accordion type="multiple" className="w-full">
+              {ledgers.map(l => {
+                const emp = empMap.get(l.employee_id);
+                return (
+                  <AccordionItem key={l.employee_id} value={l.employee_id}>
+                    <AccordionTrigger>
+                      <div className="flex flex-1 items-center justify-between gap-3 pr-3">
+                        <div className="text-left">
+                          <div className="font-medium">{emp?.full_name ?? "—"}</div>
+                          <div className="text-xs text-muted-foreground font-mono">{emp?.employee_code}</div>
+                        </div>
+                        <div className="flex items-center gap-4 text-xs">
+                          <span className="text-muted-foreground">Advanced <span className="font-medium text-foreground">{fmtINR(l.debit)}</span></span>
+                          <span className="text-muted-foreground">Repaid <span className="font-medium text-emerald-600 dark:text-emerald-400">{fmtINR(l.credit)}</span></span>
+                          <Badge variant={l.balance > 0 ? "destructive" : "secondary"}>Balance {fmtINR(l.balance)}</Badge>
+                        </div>
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="w-32">Date</TableHead>
+                            <TableHead>Particulars</TableHead>
+                            <TableHead className="text-right">Advance (Dr)</TableHead>
+                            <TableHead className="text-right">Repaid (Cr)</TableHead>
+                            <TableHead className="text-right">Balance</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {l.entries.map((e, i) => (
+                            <TableRow key={i}>
+                              <TableCell className="font-mono text-xs">{e.date}</TableCell>
+                              <TableCell className="text-sm">{e.particulars}</TableCell>
+                              <TableCell className="text-right">{e.debit ? fmtINR(e.debit) : "—"}</TableCell>
+                              <TableCell className="text-right text-emerald-600 dark:text-emerald-400">{e.credit ? fmtINR(e.credit) : "—"}</TableCell>
+                              <TableCell className="text-right font-semibold">{fmtINR(Math.max(0, e.balance))}</TableCell>
+                            </TableRow>
+                          ))}
+                          <TableRow className="bg-muted/40">
+                            <TableCell colSpan={2} className="font-semibold">Closing balance</TableCell>
+                            <TableCell className="text-right font-semibold">{fmtINR(l.debit)}</TableCell>
+                            <TableCell className="text-right font-semibold text-emerald-600 dark:text-emerald-400">{fmtINR(l.credit)}</TableCell>
+                            <TableCell className="text-right font-bold">{fmtINR(l.balance)}</TableCell>
+                          </TableRow>
+                        </TableBody>
+                      </Table>
+                    </AccordionContent>
+                  </AccordionItem>
+                );
+              })}
+            </Accordion>
+          )}
+        </CardContent>
+      </Card>
+
+
+      <Card className="bg-gradient-card border-border/60 shadow-elegant">
+        <CardHeader className="flex flex-row items-center justify-between gap-3">
           <CardTitle>Advances</CardTitle>
           <div className="w-64">
             <Select value={filterEmp} onValueChange={setFilterEmp}>
