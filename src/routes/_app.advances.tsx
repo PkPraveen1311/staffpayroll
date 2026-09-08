@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { toast } from "sonner";
 import { fmtINR, monthName } from "@/lib/format";
 import { Plus, Trash2, FileDown, FileSpreadsheet, IndianRupee, HandCoins, Wallet } from "lucide-react";
@@ -99,6 +100,37 @@ function AdvancesPage() {
     const outstanding = rows.reduce((s, r) => s + r.outstanding, 0);
     return { advanced, repaid, outstanding };
   }, [rows]);
+
+  // Employee-wise single ledger: every advance (debit) and repayment (credit) in date order
+  const ledgers = useMemo(() => {
+    const advById = new Map(advances.map(a => [a.id, a]));
+    const byEmp = new Map<string, { date: string; type: "advance" | "repayment"; particulars: string; debit: number; credit: number }[]>();
+
+    advances.forEach(a => {
+      const list = byEmp.get(a.employee_id) ?? [];
+      list.push({ date: a.given_on, type: "advance", particulars: a.notes || "Advance given", debit: Number(a.amount), credit: 0 });
+      byEmp.set(a.employee_id, list);
+    });
+    repayments.forEach(r => {
+      const a = advById.get(r.advance_id);
+      if (!a) return;
+      const list = byEmp.get(a.employee_id) ?? [];
+      list.push({ date: r.repaid_on, type: "repayment", particulars: r.notes || "Repayment", debit: 0, credit: Number(r.amount) });
+      byEmp.set(a.employee_id, list);
+    });
+
+    const out = Array.from(byEmp.entries()).map(([employee_id, entries]) => {
+      entries.sort((x, y) => x.date.localeCompare(y.date) || (x.type === "advance" ? -1 : 1));
+      let bal = 0;
+      const withBal = entries.map(e => { bal += e.debit - e.credit; return { ...e, balance: bal }; });
+      const debit = entries.reduce((s, e) => s + e.debit, 0);
+      const credit = entries.reduce((s, e) => s + e.credit, 0);
+      return { employee_id, entries: withBal, debit, credit, balance: Math.max(0, debit - credit) };
+    });
+    out.sort((a, b) => b.balance - a.balance);
+    return filterEmp === "all" ? out : out.filter(l => l.employee_id === filterEmp);
+  }, [advances, repayments, filterEmp]);
+
 
   const monthCols = useMemo(() => {
     // Distinct year-month appearing in any repayment (of visible rows)
@@ -435,6 +467,83 @@ function AdvancesPage() {
         <StatCard label="Total repaid" value={totals.repaid} color="from-emerald-500/20 to-emerald-500/5" icon={<HandCoins className="h-5 w-5" />} />
         <StatCard label="Outstanding" value={totals.outstanding} color="from-rose-500/20 to-rose-500/5" icon={<IndianRupee className="h-5 w-5" />} highlight />
       </div>
+
+      <Card className="bg-gradient-card border-border/60 shadow-elegant">
+        <CardHeader className="flex flex-row items-center justify-between gap-3">
+          <div>
+            <CardTitle>Employee Ledger</CardTitle>
+            <p className="text-xs text-muted-foreground mt-1">One running account per employee — every advance adds, every repayment subtracts.</p>
+          </div>
+          <div className="w-64">
+            <Select value={filterEmp} onValueChange={setFilterEmp}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All employees</SelectItem>
+                {employees.map(e => <SelectItem key={e.id} value={e.id}>{e.full_name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {ledgers.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-6 text-center">No ledger entries yet.</p>
+          ) : (
+            <Accordion type="multiple" className="w-full">
+              {ledgers.map(l => {
+                const emp = empMap.get(l.employee_id);
+                return (
+                  <AccordionItem key={l.employee_id} value={l.employee_id}>
+                    <AccordionTrigger>
+                      <div className="flex flex-1 items-center justify-between gap-3 pr-3">
+                        <div className="text-left">
+                          <div className="font-medium">{emp?.full_name ?? "—"}</div>
+                          <div className="text-xs text-muted-foreground font-mono">{emp?.employee_code}</div>
+                        </div>
+                        <div className="flex items-center gap-4 text-xs">
+                          <span className="text-muted-foreground">Advanced <span className="font-medium text-foreground">{fmtINR(l.debit)}</span></span>
+                          <span className="text-muted-foreground">Repaid <span className="font-medium text-emerald-600 dark:text-emerald-400">{fmtINR(l.credit)}</span></span>
+                          <Badge variant={l.balance > 0 ? "destructive" : "secondary"}>Balance {fmtINR(l.balance)}</Badge>
+                        </div>
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="w-32">Date</TableHead>
+                            <TableHead>Particulars</TableHead>
+                            <TableHead className="text-right">Advance (Dr)</TableHead>
+                            <TableHead className="text-right">Repaid (Cr)</TableHead>
+                            <TableHead className="text-right">Balance</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {l.entries.map((e, i) => (
+                            <TableRow key={i}>
+                              <TableCell className="font-mono text-xs">{e.date}</TableCell>
+                              <TableCell className="text-sm">{e.particulars}</TableCell>
+                              <TableCell className="text-right">{e.debit ? fmtINR(e.debit) : "—"}</TableCell>
+                              <TableCell className="text-right text-emerald-600 dark:text-emerald-400">{e.credit ? fmtINR(e.credit) : "—"}</TableCell>
+                              <TableCell className="text-right font-semibold">{fmtINR(Math.max(0, e.balance))}</TableCell>
+                            </TableRow>
+                          ))}
+                          <TableRow className="bg-muted/40">
+                            <TableCell colSpan={2} className="font-semibold">Closing balance</TableCell>
+                            <TableCell className="text-right font-semibold">{fmtINR(l.debit)}</TableCell>
+                            <TableCell className="text-right font-semibold text-emerald-600 dark:text-emerald-400">{fmtINR(l.credit)}</TableCell>
+                            <TableCell className="text-right font-bold">{fmtINR(l.balance)}</TableCell>
+                          </TableRow>
+                        </TableBody>
+                      </Table>
+                    </AccordionContent>
+                  </AccordionItem>
+                );
+              })}
+            </Accordion>
+          )}
+        </CardContent>
+      </Card>
+
 
       <Card className="bg-gradient-card border-border/60 shadow-elegant">
         <CardHeader className="flex flex-row items-center justify-between gap-3">
