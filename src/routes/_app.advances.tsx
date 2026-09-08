@@ -100,6 +100,37 @@ function AdvancesPage() {
     return { advanced, repaid, outstanding };
   }, [rows]);
 
+  // Employee-wise single ledger: every advance (debit) and repayment (credit) in date order
+  const ledgers = useMemo(() => {
+    const advById = new Map(advances.map(a => [a.id, a]));
+    const byEmp = new Map<string, { date: string; type: "advance" | "repayment"; particulars: string; debit: number; credit: number }[]>();
+
+    advances.forEach(a => {
+      const list = byEmp.get(a.employee_id) ?? [];
+      list.push({ date: a.given_on, type: "advance", particulars: a.notes || "Advance given", debit: Number(a.amount), credit: 0 });
+      byEmp.set(a.employee_id, list);
+    });
+    repayments.forEach(r => {
+      const a = advById.get(r.advance_id);
+      if (!a) return;
+      const list = byEmp.get(a.employee_id) ?? [];
+      list.push({ date: r.repaid_on, type: "repayment", particulars: r.notes || "Repayment", debit: 0, credit: Number(r.amount) });
+      byEmp.set(a.employee_id, list);
+    });
+
+    const out = Array.from(byEmp.entries()).map(([employee_id, entries]) => {
+      entries.sort((x, y) => x.date.localeCompare(y.date) || (x.type === "advance" ? -1 : 1));
+      let bal = 0;
+      const withBal = entries.map(e => { bal += e.debit - e.credit; return { ...e, balance: bal }; });
+      const debit = entries.reduce((s, e) => s + e.debit, 0);
+      const credit = entries.reduce((s, e) => s + e.credit, 0);
+      return { employee_id, entries: withBal, debit, credit, balance: Math.max(0, debit - credit) };
+    });
+    out.sort((a, b) => b.balance - a.balance);
+    return filterEmp === "all" ? out : out.filter(l => l.employee_id === filterEmp);
+  }, [advances, repayments, filterEmp]);
+
+
   const monthCols = useMemo(() => {
     // Distinct year-month appearing in any repayment (of visible rows)
     const set = new Set<string>();
