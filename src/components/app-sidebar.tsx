@@ -14,6 +14,7 @@ const items = [
   { title: "Employees", url: "/employees", icon: Users },
   { title: "Commission Agents", url: "/commission-agents", icon: Percent },
   { title: "Commission", url: "/commission", icon: HandCoins },
+  { title: "Commission Slips", url: "/commission-slips", icon: FileText },
   { title: "Celebrations", url: "/celebrations", icon: Cake },
   { title: "Attendance", url: "/attendance", icon: CalendarCheck },
   { title: "Attendance Sheet", url: "/attendance-sheet", icon: CalendarDays },
