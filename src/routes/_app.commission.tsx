@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { fmtINR } from "@/lib/format";
 import { exportToXlsx } from "@/lib/xlsx-export";
+import { syncAgentAdvanceRepayments } from "@/lib/agent-advance-sync";
 import { FileSpreadsheet, Printer, Save } from "lucide-react";
 
 export const Route = createFileRoute("/_app/commission")({
@@ -42,7 +43,7 @@ type Agent = {
 type Payment = {
   id: string; agent_id: string; paid_on: string; gross_amount: number;
   tds_rate: number; tds_amount: number; net_amount: number; notes: string | null;
-  month: number | null; year: number | null; due_date: string | null;
+  month: number | null; year: number | null; due_date: string | null; advance: number | null;
 };
 
 function rateFor(a: Agent) {
@@ -58,6 +59,7 @@ function CommissionPage() {
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [year, setYear] = useState(now.getFullYear());
   const [amounts, setAmounts] = useState<Record<string, string>>({});
+  const [advances, setAdvances] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
 
   const { data: agentsData } = useQuery<Agent[]>({
@@ -85,6 +87,27 @@ function CommissionPage() {
       return (data ?? []) as Payment[];
     },
   });
+
+  const { data: agentAdvData } = useQuery({
+    queryKey: ["agent-advance-outstanding"],
+    queryFn: async () => {
+      const [{ data: adv, error: e1 }, { data: rep, error: e2 }] = await Promise.all([
+        supabase.from("agent_advances").select("id, agent_id, amount"),
+        supabase.from("agent_advance_repayments").select("advance_id, amount"),
+      ]);
+      if (e1) throw e1;
+      if (e2) throw e2;
+      const repaid = new Map<string, number>();
+      (rep ?? []).forEach(r => repaid.set(r.advance_id, (repaid.get(r.advance_id) ?? 0) + Number(r.amount)));
+      const m = new Map<string, number>();
+      (adv ?? []).forEach(a => {
+        const bal = Number(a.amount) - (repaid.get(a.id) ?? 0);
+        if (bal > 0) m.set(a.agent_id, (m.get(a.agent_id) ?? 0) + bal);
+      });
+      return m;
+    },
+  });
+  const outstanding = agentAdvData ?? new Map<string, number>();
 
   const daysInMonth = useMemo(() => new Date(year, month, 0).getDate(), [month, year]);
 
@@ -159,6 +182,12 @@ function CommissionPage() {
       } else next[a.id] = "";
     });
     setAmounts(next);
+    const nextAdv: Record<string, string> = {};
+    agents.forEach(a => {
+      const r = existing.get(a.id);
+      nextAdv[a.id] = r && Number(r.advance ?? 0) > 0 ? String(Number(r.advance)) : "";
+    });
+    setAdvances(nextAdv);
     const first = rows[0];
     setDueDate(first?.due_date ?? defaultDue);
     setPaidDate(first?.paid_on ?? defaultDue);
@@ -173,10 +202,11 @@ function CommissionPage() {
     const gross = fixed + commission;
     const rate = rateFor(a);
     const tds = Math.round((gross * rate) / 100);
-    return { agent: a, fixed, commission, gross, rate, tds, net: gross - tds, days };
-  }), [agents, amounts, paidDays, daysInMonth]);
+    const advance = Math.round(Number(advances[a.id] || 0));
+    return { agent: a, fixed, commission, gross, rate, tds, advance, net: gross - tds - advance, days };
+  }), [agents, amounts, advances, paidDays, daysInMonth]);
 
-  const totals = computed.reduce((t, r) => ({ gross: t.gross + r.gross, tds: t.tds + r.tds, net: t.net + r.net }), { gross: 0, tds: 0, net: 0 });
+  const totals = computed.reduce((t, r) => ({ gross: t.gross + r.gross, tds: t.tds + r.tds, advance: t.advance + r.advance, net: t.net + r.net }), { gross: 0, tds: 0, advance: 0, net: 0 });
 
   const saveAll = async () => {
     setSaving(true);
@@ -186,7 +216,7 @@ function CommissionPage() {
         if (r.gross > 0) {
           const payload = {
             agent_id: r.agent.id, paid_on: paidDate, due_date: dueDate, month, year,
-            gross_amount: r.gross, tds_rate: r.rate, tds_amount: r.tds, net_amount: r.net,
+            gross_amount: r.gross, tds_rate: r.rate, tds_amount: r.tds, advance: r.advance, net_amount: r.net,
           };
           const { error } = row
             ? await supabase.from("commission_payments").update(payload).eq("id", row.id)
@@ -197,7 +227,12 @@ function CommissionPage() {
           if (error) throw error;
         }
       }
+      const sync = await syncAgentAdvanceRepayments(month, year, computed.map(r => ({ agent_id: r.agent.id, advance: r.advance })));
       toast.success(`Commission saved for ${MONTHS[month - 1]} ${year}`);
+      if (sync.unmatched > 0) toast.warning(`${fmtINR(sync.unmatched)} deducted has no matching advance in the ledger`);
+      qc.invalidateQueries({ queryKey: ["agent-advance-outstanding"] });
+      qc.invalidateQueries({ queryKey: ["agent-advances"] });
+      qc.invalidateQueries({ queryKey: ["agent-advance-repayments"] });
       qc.invalidateQueries({ queryKey: ["commission-month", year, month] });
       qc.invalidateQueries({ queryKey: ["commission-payments"] });
     } catch (e: any) {
@@ -225,6 +260,7 @@ function CommissionPage() {
       "Gross Total": r.gross,
       "TDS %": r.rate,
       "TDS (194H)": r.tds,
+      Advance: r.advance,
       "Net Payable": r.net,
       "Due Date": dueDate,
       "Paid Date": paidDate,
@@ -294,12 +330,13 @@ function CommissionPage() {
                   <TableHead className="text-right">Commission</TableHead>
                   <TableHead className="text-right">TDS %</TableHead>
                   <TableHead className="text-right">TDS (194H)</TableHead>
+                  <TableHead className="text-right">Advance</TableHead>
                   <TableHead className="text-right">Net Payable</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {computed.length === 0 ? (
-                  <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground py-8">No active commission agents. Add them in the Commission Agents tab.</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={11} className="text-center text-muted-foreground py-8">No active commission agents. Add them in the Commission Agents tab.</TableCell></TableRow>
                 ) : computed.map((r, i) => (
                   <TableRow key={r.agent.id}>
                     <TableCell>{i + 1}</TableCell>
@@ -337,6 +374,18 @@ function CommissionPage() {
                     </TableCell>
                     <TableCell className="text-right"><Badge variant="secondary">{r.rate}%</Badge></TableCell>
                     <TableCell className="text-right">{fmtINR(r.tds)}</TableCell>
+                    <TableCell className="text-right">
+                      <Input
+                        type="number" min="0"
+                        className="h-8 w-28 ml-auto text-right print:hidden"
+                        value={advances[r.agent.id] ?? ""}
+                        onChange={(e) => setAdvances({ ...advances, [r.agent.id]: e.target.value })}
+                      />
+                      <span className="hidden print:inline">{fmtINR(r.advance)}</span>
+                      {(outstanding.get(r.agent.id) ?? 0) > 0 && (
+                        <div className="text-xs text-muted-foreground print:hidden">Bal: {fmtINR(outstanding.get(r.agent.id) ?? 0)}</div>
+                      )}
+                    </TableCell>
                     <TableCell className="text-right font-semibold">{fmtINR(r.net)}</TableCell>
                   </TableRow>
                 ))}
@@ -344,7 +393,7 @@ function CommissionPage() {
             </Table>
 
             {computed.length > 0 && (
-              <div className="mt-4 grid gap-3 sm:grid-cols-3">
+              <div className="mt-4 grid gap-3 sm:grid-cols-4">
                 <div className="rounded-lg border border-border/60 p-3">
                   <div className="text-xs text-muted-foreground">Total Commission</div>
                   <div className="text-xl font-bold">{fmtINR(totals.gross)}</div>
@@ -352,6 +401,10 @@ function CommissionPage() {
                 <div className="rounded-lg border border-border/60 p-3">
                   <div className="text-xs text-muted-foreground">Total TDS (194H)</div>
                   <div className="text-xl font-bold">{fmtINR(totals.tds)}</div>
+                </div>
+                <div className="rounded-lg border border-border/60 p-3">
+                  <div className="text-xs text-muted-foreground">Total Advance</div>
+                  <div className="text-xl font-bold">{fmtINR(totals.advance)}</div>
                 </div>
                 <div className="rounded-lg border border-border/60 p-3">
                   <div className="text-xs text-muted-foreground">Total Net Payable</div>

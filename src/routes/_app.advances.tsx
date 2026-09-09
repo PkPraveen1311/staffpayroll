@@ -18,6 +18,9 @@ import { Plus, Trash2, FileDown, FileSpreadsheet, IndianRupee, HandCoins, Wallet
 import { jsPDF } from "jspdf";
 import ExcelJS from "exceljs";
 
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AgentAdvancesSection } from "@/components/agent-advances";
+
 export const Route = createFileRoute("/_app/advances")({ component: AdvancesPage });
 
 type Employee = { id: string; full_name: string; employee_code: string; department: string | null };
@@ -25,6 +28,20 @@ type Advance = { id: string; employee_id: string; amount: number; given_on: stri
 type Repayment = { id: string; advance_id: string; amount: number; repaid_on: string; notes: string | null };
 
 function AdvancesPage() {
+  return (
+    <Tabs defaultValue="employees" className="space-y-6">
+      <TabsList>
+        <TabsTrigger value="employees">Employees</TabsTrigger>
+        <TabsTrigger value="agents">Commission Agents</TabsTrigger>
+      </TabsList>
+      <TabsContent value="employees"><EmployeeAdvances /></TabsContent>
+      <TabsContent value="agents"><AgentAdvancesSection /></TabsContent>
+    </Tabs>
+  );
+}
+
+function EmployeeAdvances() {
+
   const qc = useQueryClient();
   const [addOpen, setAddOpen] = useState(false);
   const [empId, setEmpId] = useState("");
