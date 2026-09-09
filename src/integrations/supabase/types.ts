@@ -128,6 +128,44 @@ export type Database = {
           },
         ]
       }
+      agent_allowed_week_offs: {
+        Row: {
+          agent_id: string
+          allowed: number
+          created_at: string
+          id: string
+          month: number
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          agent_id: string
+          allowed?: number
+          created_at?: string
+          id?: string
+          month: number
+          updated_at?: string
+          year: number
+        }
+        Update: {
+          agent_id?: string
+          allowed?: number
+          created_at?: string
+          id?: string
+          month?: number
+          updated_at?: string
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_allowed_week_offs_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "commission_agents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agent_attendance: {
         Row: {
           agent_id: string
