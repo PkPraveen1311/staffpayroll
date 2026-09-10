@@ -139,15 +139,16 @@ export function CommissionSection() {
     });
     const m = new Map<string, number>();
     countsMap.forEach((c, id) => {
-      const countedWeekOffDates = [...c.weekOffDates].sort().slice(0, ALLOWED_WEEK_OFFS);
-      const remainingAllowed = ALLOWED_WEEK_OFFS - countedWeekOffDates.length;
+      const allowed = allowedWO?.get(id) ?? ALLOWED_WEEK_OFFS;
+      const countedWeekOffDates = [...c.weekOffDates].sort().slice(0, allowed);
+      const remainingAllowed = allowed - countedWeekOffDates.length;
       const paidFullDates = new Set<string>([...c.presentDates, ...countedWeekOffDates, ...c.leaveDates]);
       const payableHalfDays = [...c.halfDates].filter(d => !paidFullDates.has(d)).length;
       const halfDayCredit = Math.min(remainingAllowed, payableHalfDays / 2);
       m.set(id, Math.min(daysInMonth, paidFullDates.size + payableHalfDays / 2 + halfDayCredit));
     });
     return m;
-  }, [attData, daysInMonth]);
+  }, [attData, daysInMonth, allowedWO]);
 
   const agents = useMemo(() => agentsData ?? [], [agentsData]);
   const rows = useMemo(() => rowsData ?? [], [rowsData]);
