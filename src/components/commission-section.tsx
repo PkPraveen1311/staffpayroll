@@ -114,8 +114,13 @@ export function CommissionSection() {
 
   // Same paid-days formula as payroll: present + tour + allowed week-offs + leave +
   // half/2, where unused week-off credits upgrade half-days (1 credit = 2 half-days).
+  const { data: allowedWO } = useQuery({
+    queryKey: ["agent-allowed-week-offs", year, month],
+    queryFn: () => fetchAgentAllowedWeekOffs(year, month),
+  });
+
   const paidDays = useMemo(() => {
-    const ALLOWED_WEEK_OFFS = 4; // default, same as employees without a custom entry
+    const ALLOWED_WEEK_OFFS = 4; // default when no custom entry exists for the month
     type Counts = { presentDates: Set<string>; weekOffDates: Set<string>; leaveDates: Set<string>; halfDates: Set<string> };
     const countsMap = new Map<string, Counts>();
     (attData ?? []).forEach(r => {

@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Eye, Printer, MessageCircle, Mail, FileSpreadsheet } from "lucide-react";
 import { fmtINR, monthName } from "@/lib/format";
 import { toast } from "sonner";
-import { computeAgentPaidDays, fetchAgentAttendance, fixedIncentiveFor } from "@/lib/agent-paid-days";
+import { computeAgentPaidDays, fetchAgentAttendance, fetchAgentAllowedWeekOffs, fixedIncentiveFor } from "@/lib/agent-paid-days";
 import { generateCommissionSlipPdf, type CommissionSlip } from "@/lib/commission-slip-pdf";
 import { exportToXlsx } from "@/lib/xlsx-export";
 
@@ -54,7 +54,15 @@ export function CommissionSlipsSection() {
     queryFn: () => fetchAgentAttendance(year, month),
   });
 
-  const paidDays = useMemo(() => computeAgentPaidDays(att, daysInMonth), [att, daysInMonth]);
+  const { data: allowedWO } = useQuery({
+    queryKey: ["agent-allowed-week-offs", year, month],
+    queryFn: () => fetchAgentAllowedWeekOffs(year, month),
+  });
+
+  const paidDays = useMemo(
+    () => computeAgentPaidDays(att, daysInMonth, allowedWO),
+    [att, daysInMonth, allowedWO],
+  );
   const agentById = useMemo(() => new Map(agents.map((a: any) => [a.id, a])), [agents]);
   const period = `${monthName(month)} ${year}`;
 
