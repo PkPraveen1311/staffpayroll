@@ -11,7 +11,11 @@ export type AttRow = { agent_id: string; status: string; date: string };
  * + leave + half/2, where unused week-off credits upgrade half-days.
  * Agents with no attendance marked for the month get 0 paid days.
  */
-export function computeAgentPaidDays(attData: AttRow[], daysInMonth: number) {
+export function computeAgentPaidDays(
+  attData: AttRow[],
+  daysInMonth: number,
+  allowedMap?: Map<string, number>,
+) {
   type Counts = { presentDates: Set<string>; weekOffDates: Set<string>; leaveDates: Set<string>; halfDates: Set<string> };
   const countsMap = new Map<string, Counts>();
   (attData ?? []).forEach((r) => {
@@ -29,8 +33,9 @@ export function computeAgentPaidDays(attData: AttRow[], daysInMonth: number) {
   });
   const m = new Map<string, number>();
   countsMap.forEach((c, id) => {
-    const countedWeekOffDates = [...c.weekOffDates].sort().slice(0, ALLOWED_WEEK_OFFS);
-    const remainingAllowed = ALLOWED_WEEK_OFFS - countedWeekOffDates.length;
+    const allowed = allowedMap?.get(id) ?? ALLOWED_WEEK_OFFS;
+    const countedWeekOffDates = [...c.weekOffDates].sort().slice(0, allowed);
+    const remainingAllowed = allowed - countedWeekOffDates.length;
     const paidFullDates = new Set<string>([...c.presentDates, ...countedWeekOffDates, ...c.leaveDates]);
     const payableHalfDays = [...c.halfDates].filter((d) => !paidFullDates.has(d)).length;
     const halfDayCredit = Math.min(remainingAllowed, payableHalfDays / 2);
@@ -49,6 +54,17 @@ export async function fetchAgentAttendance(year: number, month: number) {
     .lte("date", to);
   if (error) throw error;
   return (data ?? []) as AttRow[];
+}
+
+/** Per-agent allowed paid week-offs for a month (defaults to 4 when unset). */
+export async function fetchAgentAllowedWeekOffs(year: number, month: number) {
+  const { data, error } = await supabase
+    .from("agent_allowed_week_offs")
+    .select("agent_id, allowed")
+    .eq("year", year)
+    .eq("month", month);
+  if (error) throw error;
+  return new Map<string, number>((data ?? []).map((r: any) => [r.agent_id, Number(r.allowed)]));
 }
 
 export function fixedIncentiveFor(agent: any, days: number, daysInMonth: number) {

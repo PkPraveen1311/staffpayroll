@@ -12,6 +12,8 @@ import { toast } from "sonner";
 import { fmtINR, monthName } from "@/lib/format";
 import { exportPayrollRegisterXlsx } from "@/lib/payroll-xlsx";
 import { syncSalaryAdvanceRepayments } from "@/lib/advance-sync";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CommissionSection } from "@/components/commission-section";
 
 export const Route = createFileRoute("/_app/payroll")({ component: PayrollPage });
 
@@ -22,6 +24,19 @@ const yearsList = [now.getFullYear() - 1, now.getFullYear(), now.getFullYear() +
 const round = (n: number) => Math.round(n);
 
 function PayrollPage() {
+  return (
+    <Tabs defaultValue="employees" className="space-y-6">
+      <TabsList className="no-print">
+        <TabsTrigger value="employees">Employees</TabsTrigger>
+        <TabsTrigger value="agents">Commission Agents</TabsTrigger>
+      </TabsList>
+      <TabsContent value="employees"><EmployeePayroll /></TabsContent>
+      <TabsContent value="agents"><CommissionSection /></TabsContent>
+    </Tabs>
+  );
+}
+
+function EmployeePayroll() {
   const qc = useQueryClient();
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [year, setYear] = useState(now.getFullYear());
