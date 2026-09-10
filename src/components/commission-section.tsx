@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { fmtINR } from "@/lib/format";
 import { exportToXlsx } from "@/lib/xlsx-export";
 import { syncAgentAdvanceRepayments } from "@/lib/agent-advance-sync";
+import { fetchAgentAllowedWeekOffs } from "@/lib/agent-paid-days";
 import { FileSpreadsheet, Printer, Save } from "lucide-react";
 
 
