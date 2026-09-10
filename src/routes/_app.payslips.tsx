@@ -14,10 +14,25 @@ import { fmtINR, monthName } from "@/lib/format";
 import { toast } from "sonner";
 import { generatePayslipPdf } from "@/lib/payslip-pdf";
 import { syncSalaryAdvanceRepayments } from "@/lib/advance-sync";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CommissionSlipsSection } from "@/components/commission-slips-section";
 
 export const Route = createFileRoute("/_app/payslips")({ component: PayslipsPage });
 
 function PayslipsPage() {
+  return (
+    <Tabs defaultValue="employees" className="space-y-6">
+      <TabsList className="no-print">
+        <TabsTrigger value="employees">Employees</TabsTrigger>
+        <TabsTrigger value="agents">Commission Agents</TabsTrigger>
+      </TabsList>
+      <TabsContent value="employees"><EmployeePayslips /></TabsContent>
+      <TabsContent value="agents"><CommissionSlipsSection /></TabsContent>
+    </Tabs>
+  );
+}
+
+function EmployeePayslips() {
   const qc = useQueryClient();
   const [runId, setRunId] = useState<string>("");
 
