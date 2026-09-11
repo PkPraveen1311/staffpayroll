@@ -14,7 +14,8 @@ import { Badge } from "@/components/ui/badge";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { toast } from "sonner";
 import { fmtINR, monthName } from "@/lib/format";
-import { Plus, Trash2, FileDown, FileSpreadsheet, IndianRupee, HandCoins, Wallet } from "lucide-react";
+import { Plus, Trash2, FileDown, FileSpreadsheet, IndianRupee, HandCoins, Wallet, Printer } from "lucide-react";
+import { printLedgers } from "@/lib/ledger-print";
 import { jsPDF } from "jspdf";
 import ExcelJS from "exceljs";
 
@@ -229,6 +230,21 @@ function EmployeeAdvances() {
     qc.invalidateQueries({ queryKey: ["advance-repayments"] });
   };
 
+  const printLedger = () => {
+    if (!ledgers.length) { toast.error("No ledger entries to print"); return; }
+    printLedgers("Employee Advance Ledger", ledgers.map(l => {
+      const emp = empMap.get(l.employee_id);
+      return {
+        name: emp?.full_name ?? "—",
+        code: emp?.employee_code ?? "",
+        entries: l.entries,
+        debit: l.debit,
+        credit: l.credit,
+        balance: l.balance,
+      };
+    }));
+  };
+
   const exportPdf = () => {
     const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
     const W = 297, M = 10;
@@ -393,6 +409,7 @@ function EmployeeAdvances() {
           <p className="text-sm text-muted-foreground">Track money given as advance, month-wise repayments, and current outstanding.</p>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" onClick={printLedger}><Printer className="h-4 w-4 mr-1" /> Print Ledger</Button>
           <Button variant="outline" onClick={exportPdf}><FileDown className="h-4 w-4 mr-1" /> PDF</Button>
           <Button variant="outline" onClick={exportXlsx}><FileSpreadsheet className="h-4 w-4 mr-1" /> Excel</Button>
           <Dialog open={depositOpen} onOpenChange={(o) => { setDepositOpen(o); if (o) { setDepEmpId(""); setDepAmt(""); setDepDate(new Date().toISOString().slice(0, 10)); setDepNotes(""); } }}>

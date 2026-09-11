@@ -14,7 +14,8 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { toast } from "sonner";
 import { fmtINR } from "@/lib/format";
 import { exportToXlsx } from "@/lib/xlsx-export";
-import { Plus, Trash2, FileSpreadsheet, IndianRupee, HandCoins, Wallet } from "lucide-react";
+import { Plus, Trash2, FileSpreadsheet, IndianRupee, HandCoins, Wallet, Printer } from "lucide-react";
+import { printLedgers } from "@/lib/ledger-print";
 
 type Agent = { id: string; full_name: string; agent_code: string; department: string | null };
 type Advance = { id: string; agent_id: string; amount: number; given_on: string; notes: string | null };
@@ -211,6 +212,21 @@ export function AgentAdvancesSection() {
     "Agent Advances",
   );
 
+  const printLedger = () => {
+    if (!ledgers.length) { toast.error("No ledger entries to print"); return; }
+    printLedgers("Commission Agent Advance Ledger", ledgers.map(l => {
+      const a = agentMap.get(l.agent_id);
+      return {
+        name: a?.full_name ?? "—",
+        code: a?.agent_code ?? "",
+        entries: l.entries,
+        debit: l.debit,
+        credit: l.credit,
+        balance: l.balance,
+      };
+    }));
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -219,6 +235,7 @@ export function AgentAdvancesSection() {
           <p className="text-sm text-muted-foreground">Advances given to agents. Outstanding amounts can be deducted in the Commission register.</p>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" onClick={printLedger}><Printer className="h-4 w-4 mr-1" /> Print Ledger</Button>
           <Button variant="outline" onClick={exportExcel}><FileSpreadsheet className="h-4 w-4 mr-1" /> Excel</Button>
           <Dialog open={depositOpen} onOpenChange={(o) => { setDepositOpen(o); if (o) { setDepAgentId(""); setDepAmt(""); setDepDate(today()); setDepNotes(""); } }}>
             <DialogTrigger asChild>
