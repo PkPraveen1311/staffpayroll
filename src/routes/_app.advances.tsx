@@ -229,6 +229,21 @@ function EmployeeAdvances() {
     qc.invalidateQueries({ queryKey: ["advance-repayments"] });
   };
 
+  const printLedger = () => {
+    if (!ledgers.length) { toast.error("No ledger entries to print"); return; }
+    printLedgers("Employee Advance Ledger", ledgers.map(l => {
+      const emp = empMap.get(l.employee_id);
+      return {
+        name: emp?.full_name ?? "—",
+        code: emp?.employee_code ?? "",
+        entries: l.entries,
+        debit: l.debit,
+        credit: l.credit,
+        balance: l.balance,
+      };
+    }));
+  };
+
   const exportPdf = () => {
     const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
     const W = 297, M = 10;
