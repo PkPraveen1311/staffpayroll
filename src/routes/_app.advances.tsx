@@ -14,7 +14,8 @@ import { Badge } from "@/components/ui/badge";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { toast } from "sonner";
 import { fmtINR, monthName } from "@/lib/format";
-import { Plus, Trash2, FileDown, FileSpreadsheet, IndianRupee, HandCoins, Wallet } from "lucide-react";
+import { Plus, Trash2, FileDown, FileSpreadsheet, IndianRupee, HandCoins, Wallet, Printer } from "lucide-react";
+import { printLedgers } from "@/lib/ledger-print";
 import { jsPDF } from "jspdf";
 import ExcelJS from "exceljs";
 
