@@ -409,6 +409,7 @@ function EmployeeAdvances() {
           <p className="text-sm text-muted-foreground">Track money given as advance, month-wise repayments, and current outstanding.</p>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" onClick={printLedger}><Printer className="h-4 w-4 mr-1" /> Print Ledger</Button>
           <Button variant="outline" onClick={exportPdf}><FileDown className="h-4 w-4 mr-1" /> PDF</Button>
           <Button variant="outline" onClick={exportXlsx}><FileSpreadsheet className="h-4 w-4 mr-1" /> Excel</Button>
           <Dialog open={depositOpen} onOpenChange={(o) => { setDepositOpen(o); if (o) { setDepEmpId(""); setDepAmt(""); setDepDate(new Date().toISOString().slice(0, 10)); setDepNotes(""); } }}>
