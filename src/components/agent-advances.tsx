@@ -219,6 +219,7 @@ export function AgentAdvancesSection() {
           <p className="text-sm text-muted-foreground">Advances given to agents. Outstanding amounts can be deducted in the Commission register.</p>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" onClick={printLedger}><Printer className="h-4 w-4 mr-1" /> Print Ledger</Button>
           <Button variant="outline" onClick={exportExcel}><FileSpreadsheet className="h-4 w-4 mr-1" /> Excel</Button>
           <Dialog open={depositOpen} onOpenChange={(o) => { setDepositOpen(o); if (o) { setDepAgentId(""); setDepAmt(""); setDepDate(today()); setDepNotes(""); } }}>
             <DialogTrigger asChild>
