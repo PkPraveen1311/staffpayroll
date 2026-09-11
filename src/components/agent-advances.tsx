@@ -212,6 +212,21 @@ export function AgentAdvancesSection() {
     "Agent Advances",
   );
 
+  const printLedger = () => {
+    if (!ledgers.length) { toast.error("No ledger entries to print"); return; }
+    printLedgers("Commission Agent Advance Ledger", ledgers.map(l => {
+      const a = agentMap.get(l.agent_id);
+      return {
+        name: a?.full_name ?? "—",
+        code: a?.agent_code ?? "",
+        entries: l.entries,
+        debit: l.debit,
+        credit: l.credit,
+        balance: l.balance,
+      };
+    }));
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
