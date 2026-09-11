@@ -14,7 +14,8 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { toast } from "sonner";
 import { fmtINR } from "@/lib/format";
 import { exportToXlsx } from "@/lib/xlsx-export";
-import { Plus, Trash2, FileSpreadsheet, IndianRupee, HandCoins, Wallet } from "lucide-react";
+import { Plus, Trash2, FileSpreadsheet, IndianRupee, HandCoins, Wallet, Printer } from "lucide-react";
+import { printLedgers } from "@/lib/ledger-print";
 
 type Agent = { id: string; full_name: string; agent_code: string; department: string | null };
 type Advance = { id: string; agent_id: string; amount: number; given_on: string; notes: string | null };
