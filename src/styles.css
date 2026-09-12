@@ -175,7 +175,8 @@
   .print-area th, .print-area td { border: 1px solid #999 !important; padding: 4px 6px !important; }
   .print-area thead { background: #f0f0f0 !important; }
   .no-print, [data-sidebar], header.no-print { display: none !important; }
-  .print-page { break-inside: avoid; page-break-inside: avoid; }
   .print-page + .print-page { break-before: page; page-break-before: always; }
+  .print-page thead { display: table-header-group; }
+  .print-page tr { break-inside: avoid; page-break-inside: avoid; }
 }
 
