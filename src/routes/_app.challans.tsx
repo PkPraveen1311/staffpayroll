@@ -120,6 +120,17 @@ function ChallansPage() {
 
   const sum = (arr: any[], k: string) => arr.reduce((a, b) => a + Number(b[k] ?? 0), 0);
 
+  const printOnly = (challan: "pf" | "esi" | "tds") => {
+    const area = document.querySelector(".print-area");
+    if (!area) { window.print(); return; }
+    area.setAttribute("data-print-only", challan);
+    const cleanup = () => { area.removeAttribute("data-print-only"); window.removeEventListener("afterprint", cleanup); };
+    window.addEventListener("afterprint", cleanup);
+    window.print();
+    // Fallback for browsers that don't fire afterprint
+    setTimeout(cleanup, 5000);
+  };
+
   const exportPF = () => exportToXlsx(`PF_Challan_${run ? monthName(run.month) + "_" + run.year : ""}.xlsx`, pfRows.map(r => ({
     Code: r.code, Employee: r.name, UAN: r.uan, "PF No.": r.pf_no, Age: r.age,
     "PF Wage": r.pf_wage, "EE 12%": r.ee, "EPS 8.33%": r.eps, "EPF 3.67%": r.epf,
@@ -156,7 +167,10 @@ function ChallansPage() {
           <Button onClick={exportPF} variant="outline" disabled={!pfRows.length}><FileSpreadsheet className="h-4 w-4 mr-1" />PF Excel</Button>
           <Button onClick={exportESI} variant="outline" disabled={!esiRows.length}><FileSpreadsheet className="h-4 w-4 mr-1" />ESI Excel</Button>
           <Button onClick={exportTDS} variant="outline" disabled={!tdsRows.length}><FileSpreadsheet className="h-4 w-4 mr-1" />TDS Excel</Button>
-          <Button onClick={() => window.print()} variant="outline"><Printer className="h-4 w-4 mr-1" />Print</Button>
+          <Button onClick={() => printOnly("pf")} variant="outline" disabled={!pfRows.length}><Printer className="h-4 w-4 mr-1" />PF Print</Button>
+          <Button onClick={() => printOnly("esi")} variant="outline" disabled={!esiRows.length}><Printer className="h-4 w-4 mr-1" />ESI Print</Button>
+          <Button onClick={() => printOnly("tds")} variant="outline" disabled={!tdsRows.length}><Printer className="h-4 w-4 mr-1" />TDS Print</Button>
+          <Button onClick={() => window.print()} variant="outline"><Printer className="h-4 w-4 mr-1" />Print All</Button>
         </div>
       </div>
 
