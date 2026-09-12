@@ -176,6 +176,11 @@
   .print-area thead { background: #f0f0f0 !important; }
   .no-print, [data-sidebar], header.no-print { display: none !important; }
   .print-page + .print-page { break-before: page; page-break-before: always; }
+  .print-area[data-print-only] .print-page:not([data-challan]) { display: none !important; }
+  .print-area[data-print-only="pf"] .print-page:not([data-challan="pf"]),
+  .print-area[data-print-only="esi"] .print-page:not([data-challan="esi"]),
+  .print-area[data-print-only="tds"] .print-page:not([data-challan="tds"]) { display: none !important; }
+  .print-area[data-print-only] .print-page + .print-page { break-before: auto; page-break-before: auto; }
   .print-page thead { display: table-header-group; }
   .print-page tr { break-inside: avoid; page-break-inside: avoid; }
 }
