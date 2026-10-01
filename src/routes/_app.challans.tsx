@@ -175,7 +175,7 @@ function ChallansPage() {
       </div>
 
       <div className="print-area space-y-6">
-      <Card className="print-page bg-gradient-card border-border/60 shadow-elegant">
+      <Card data-challan="pf" className="print-page bg-gradient-card border-border/60 shadow-elegant">
         <CardHeader>
           <CardTitle>PF (EPFO) Challan — {run ? `${monthName(run.month)} ${run.year}` : "—"}</CardTitle>
         </CardHeader>
@@ -232,7 +232,7 @@ function ChallansPage() {
         </CardContent>
       </Card>
 
-      <Card className="print-page bg-gradient-card border-border/60 shadow-elegant">
+      <Card data-challan="esi" className="print-page bg-gradient-card border-border/60 shadow-elegant">
         <CardHeader>
           <CardTitle>ESI Challan — {run ? `${monthName(run.month)} ${run.year}` : "—"}</CardTitle>
         </CardHeader>
@@ -275,7 +275,7 @@ function ChallansPage() {
         </CardContent>
       </Card>
 
-      <Card className="print-page bg-gradient-card border-border/60 shadow-elegant">
+      <Card data-challan="tds" className="print-page bg-gradient-card border-border/60 shadow-elegant">
         <CardHeader>
           <CardTitle>TDS Challan — Section 194H (Commission) — {run ? `${monthName(run.month)} ${run.year}` : "—"}</CardTitle>
         </CardHeader>
