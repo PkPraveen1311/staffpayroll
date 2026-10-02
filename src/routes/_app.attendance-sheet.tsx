@@ -261,7 +261,7 @@ function AttendanceSheetPage() {
     });
 
   const renderTable = (title: string, rows: SheetRow[], m: Map<string, Map<string, StatusKey>>, emptyText: string) => (
-    <section className="mb-8 break-inside-avoid">
+    <section className="attendance-print-page mb-8">
       <h2 className="text-sm font-bold mb-2 print:text-[10px]">{title}</h2>
       <div className="rounded-lg border border-border overflow-x-auto print:border-0 print:overflow-visible">
         <table className="w-full text-[10px] print:text-[8px] border-collapse">
@@ -327,13 +327,49 @@ function AttendanceSheetPage() {
     <div className="p-6 print:p-0">
       <style>{`
         @media print {
-          @page { size: A4 landscape; margin: 6mm; }
-          body { background: white !important; }
+          @page { size: A4 landscape; margin: 5mm; }
+          html, body { width: auto !important; height: auto !important; overflow: visible !important; background: white !important; }
           .no-print { display: none !important; }
-          .print-area { color: black !important; }
-          .print-area table { border-color: #000 !important; }
-          .print-area th, .print-area td { border-color: #000 !important; }
-          .page-break { break-before: page; }
+          .print-area {
+            position: static !important;
+            width: 100% !important;
+            color: black !important;
+          }
+          .attendance-print-page {
+            margin: 0 !important;
+            break-inside: auto !important;
+            page-break-inside: auto !important;
+          }
+          .attendance-print-page h2 { margin: 0 0 1.5mm !important; font-size: 8px !important; }
+          .attendance-print-page > div { overflow: visible !important; border: 0 !important; }
+          .attendance-print-page table {
+            width: 100% !important;
+            table-layout: fixed !important;
+            border-collapse: collapse !important;
+            font-size: 6.5px !important;
+            line-height: 1 !important;
+          }
+          .attendance-print-page thead { display: table-header-group !important; }
+          .attendance-print-page tr { break-inside: avoid !important; page-break-inside: avoid !important; }
+          .attendance-print-page th,
+          .attendance-print-page td {
+            position: static !important;
+            min-width: 0 !important;
+            width: auto !important;
+            height: 10px !important;
+            padding: 1px !important;
+            border: 0.5px solid #666 !important;
+            white-space: nowrap !important;
+            overflow: hidden !important;
+          }
+          .attendance-print-page th:first-child,
+          .attendance-print-page td:first-child { width: 4mm !important; }
+          .attendance-print-page th:nth-child(2),
+          .attendance-print-page td:nth-child(2) { width: 28mm !important; text-overflow: ellipsis !important; }
+          .attendance-print-page td:nth-child(2) > div:first-child { font-size: 6.5px !important; line-height: 1 !important; }
+          .attendance-print-page td:nth-child(2) > div:last-child { font-size: 5.5px !important; line-height: 1 !important; }
+          .attendance-page-break { break-before: page !important; page-break-before: always !important; }
+          .attendance-legend { margin-top: 1.5mm !important; font-size: 6.5px !important; }
         }
       `}</style>
 
@@ -386,10 +422,10 @@ function AttendanceSheetPage() {
         </div>
 
         {renderTable("Employees", employeeRows, matrix, "No active employees.")}
-        <div className="page-break" />
+        {agentRows.length > 0 && <div className="attendance-page-break" />}
         {renderTable("Commission Agents", agentRows, agentMatrix, "No active commission agents.")}
 
-        <div className="mt-3 flex flex-wrap gap-4 text-[10px] text-muted-foreground print:text-black">
+        <div className="attendance-legend mt-3 flex flex-wrap gap-4 text-[10px] text-muted-foreground print:text-black">
           <span><b className="text-emerald-600 print:text-black">P</b> Present</span>
           <span><b className="text-rose-600 print:text-black">A</b> Absent</span>
           <span><b className="text-amber-600 print:text-black">H</b> Half-day</span>
