@@ -36,6 +36,7 @@ type RosterConfig = {
   fk: "employee_id" | "agent_id";
   peopleTable: "employees" | "commission_agents";
   codeField: "employee_code" | "agent_code";
+  allowedTable: "allowed_week_offs" | "agent_allowed_week_offs";
   peopleKey: string;
   recordsKey: string;
   label: string;
@@ -45,13 +46,13 @@ type RosterConfig = {
 
 const EMPLOYEE_CFG: RosterConfig = {
   kind: "employee", table: "attendance", fk: "employee_id", peopleTable: "employees",
-  codeField: "employee_code", peopleKey: "employees-min", recordsKey: "attendance",
+  codeField: "employee_code", allowedTable: "allowed_week_offs", peopleKey: "employees-min", recordsKey: "attendance",
   label: "Employee", labelPlural: "Employees", emptyMsg: "Add employees first.",
 };
 
 const AGENT_CFG: RosterConfig = {
   kind: "agent", table: "agent_attendance", fk: "agent_id", peopleTable: "commission_agents",
-  codeField: "agent_code", peopleKey: "agents-min", recordsKey: "agent-attendance",
+  codeField: "agent_code", allowedTable: "agent_allowed_week_offs", peopleKey: "agents-min", recordsKey: "agent-attendance",
   label: "Agent", labelPlural: "Commission Agents", emptyMsg: "Add commission agents first.",
 };
 
@@ -390,6 +391,22 @@ function MonthlyView({ cfg, people }: { cfg: RosterConfig; people: any[] }) {
 
   const byDate = useMemo(() => new Map(monthRecs.map((r: any) => [r.date, r])), [monthRecs]);
 
+  const { data: allowedWeekOffs = 4 } = useQuery({
+    queryKey: [`${cfg.recordsKey}-allowed`, selected, year, month],
+    enabled: !!selected,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from(cfg.allowedTable)
+        .select("allowed")
+        .eq(cfg.fk as any, selected)
+        .eq("year", year)
+        .eq("month", month)
+        .maybeSingle();
+      if (error) throw error;
+      return data ? Number((data as any).allowed) : 4;
+    },
+  });
+
   const totals = useMemo(() => {
     const t: Record<string, number> = { present: 0, absent: 0, "half-day": 0, leave: 0, "week-off": 0, tour: 0, unmarked: 0, hours: 0 };
     for (let d = 1; d <= daysInMonth; d++) {
@@ -403,6 +420,18 @@ function MonthlyView({ cfg, people }: { cfg: RosterConfig; people: any[] }) {
     }
     return t;
   }, [byDate, daysInMonth, year, month]);
+
+  // Same paid-days formula as payroll: present + tour + leave + up to `allowed`
+  // week-offs + half/2, unused week-off credits upgrade half-days, capped at month days.
+  const netPaidDays = useMemo(() => {
+    const countedWeekOff = Math.min(totals["week-off"], allowedWeekOffs);
+    const remainingAllowed = allowedWeekOffs - countedWeekOff;
+    const halfDayCredit = Math.min(remainingAllowed, totals["half-day"] / 2);
+    return Math.min(
+      daysInMonth,
+      totals.present + totals.tour + totals.leave + countedWeekOff + totals["half-day"] / 2 + halfDayCredit,
+    );
+  }, [totals, allowedWeekOffs, daysInMonth]);
 
   const setDay = async (day: number, status: StatusKey) => {
     const dateStr = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
@@ -459,7 +488,7 @@ function MonthlyView({ cfg, people }: { cfg: RosterConfig; people: any[] }) {
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-2 md:grid-cols-8 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-9 gap-3">
         {STATUS_ORDER.map((s) => {
           const m = STATUS_META[s];
           return (
@@ -481,6 +510,13 @@ function MonthlyView({ cfg, people }: { cfg: RosterConfig; people: any[] }) {
           <CardContent className="p-3">
             <div className="text-xs uppercase tracking-wide text-muted-foreground">Total hours</div>
             <div className="text-2xl font-bold leading-none mt-1">{totals.hours}</div>
+          </CardContent>
+        </Card>
+        <Card className="border bg-gradient-card shadow-elegant border-primary/50">
+          <CardContent className="p-3">
+            <div className="text-xs uppercase tracking-wide text-primary">Net paid days</div>
+            <div className="text-2xl font-bold leading-none mt-1 text-primary">{netPaidDays}</div>
+            <div className="text-[10px] text-muted-foreground mt-0.5">week-offs allowed: {allowedWeekOffs}</div>
           </CardContent>
         </Card>
       </div>
