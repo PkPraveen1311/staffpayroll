@@ -512,6 +512,13 @@ function MonthlyView({ cfg, people }: { cfg: RosterConfig; people: any[] }) {
             <div className="text-2xl font-bold leading-none mt-1">{totals.hours}</div>
           </CardContent>
         </Card>
+        <Card className="border bg-gradient-card shadow-elegant border-primary/50">
+          <CardContent className="p-3">
+            <div className="text-xs uppercase tracking-wide text-primary">Net paid days</div>
+            <div className="text-2xl font-bold leading-none mt-1 text-primary">{netPaidDays}</div>
+            <div className="text-[10px] text-muted-foreground mt-0.5">week-offs allowed: {allowedWeekOffs}</div>
+          </CardContent>
+        </Card>
       </div>
 
       <Card className="bg-gradient-card border-border/60 shadow-elegant">
