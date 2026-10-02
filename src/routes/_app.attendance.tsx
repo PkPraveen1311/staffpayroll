@@ -391,6 +391,22 @@ function MonthlyView({ cfg, people }: { cfg: RosterConfig; people: any[] }) {
 
   const byDate = useMemo(() => new Map(monthRecs.map((r: any) => [r.date, r])), [monthRecs]);
 
+  const { data: allowedWeekOffs = 4 } = useQuery({
+    queryKey: [`${cfg.recordsKey}-allowed`, selected, year, month],
+    enabled: !!selected,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from(cfg.allowedTable)
+        .select("allowed")
+        .eq(cfg.fk as any, selected)
+        .eq("year", year)
+        .eq("month", month)
+        .maybeSingle();
+      if (error) throw error;
+      return data ? Number((data as any).allowed) : 4;
+    },
+  });
+
   const totals = useMemo(() => {
     const t: Record<string, number> = { present: 0, absent: 0, "half-day": 0, leave: 0, "week-off": 0, tour: 0, unmarked: 0, hours: 0 };
     for (let d = 1; d <= daysInMonth; d++) {
@@ -404,6 +420,18 @@ function MonthlyView({ cfg, people }: { cfg: RosterConfig; people: any[] }) {
     }
     return t;
   }, [byDate, daysInMonth, year, month]);
+
+  // Same paid-days formula as payroll: present + tour + leave + up to `allowed`
+  // week-offs + half/2, unused week-off credits upgrade half-days, capped at month days.
+  const netPaidDays = useMemo(() => {
+    const countedWeekOff = Math.min(totals["week-off"], allowedWeekOffs);
+    const remainingAllowed = allowedWeekOffs - countedWeekOff;
+    const halfDayCredit = Math.min(remainingAllowed, totals["half-day"] / 2);
+    return Math.min(
+      daysInMonth,
+      totals.present + totals.tour + totals.leave + countedWeekOff + totals["half-day"] / 2 + halfDayCredit,
+    );
+  }, [totals, allowedWeekOffs, daysInMonth]);
 
   const setDay = async (day: number, status: StatusKey) => {
     const dateStr = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
