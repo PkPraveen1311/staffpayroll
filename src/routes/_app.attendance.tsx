@@ -488,7 +488,7 @@ function MonthlyView({ cfg, people }: { cfg: RosterConfig; people: any[] }) {
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-2 md:grid-cols-8 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-9 gap-3">
         {STATUS_ORDER.map((s) => {
           const m = STATUS_META[s];
           return (
