@@ -36,6 +36,7 @@ type RosterConfig = {
   fk: "employee_id" | "agent_id";
   peopleTable: "employees" | "commission_agents";
   codeField: "employee_code" | "agent_code";
+  allowedTable: "allowed_week_offs" | "agent_allowed_week_offs";
   peopleKey: string;
   recordsKey: string;
   label: string;
@@ -45,13 +46,13 @@ type RosterConfig = {
 
 const EMPLOYEE_CFG: RosterConfig = {
   kind: "employee", table: "attendance", fk: "employee_id", peopleTable: "employees",
-  codeField: "employee_code", peopleKey: "employees-min", recordsKey: "attendance",
+  codeField: "employee_code", allowedTable: "allowed_week_offs", peopleKey: "employees-min", recordsKey: "attendance",
   label: "Employee", labelPlural: "Employees", emptyMsg: "Add employees first.",
 };
 
 const AGENT_CFG: RosterConfig = {
   kind: "agent", table: "agent_attendance", fk: "agent_id", peopleTable: "commission_agents",
-  codeField: "agent_code", peopleKey: "agents-min", recordsKey: "agent-attendance",
+  codeField: "agent_code", allowedTable: "agent_allowed_week_offs", peopleKey: "agents-min", recordsKey: "agent-attendance",
   label: "Agent", labelPlural: "Commission Agents", emptyMsg: "Add commission agents first.",
 };
 
