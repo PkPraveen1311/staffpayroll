@@ -178,6 +178,15 @@ function CommissionAgentsPage() {
     qc.invalidateQueries({ queryKey: ["commission-agents"] });
   };
 
+  const toggleAgentStatus = async (a: Agent) => {
+    const next = a.status === "active" ? "inactive" : "active";
+    const { error } = await supabase.from("commission_agents").update({ status: next }).eq("id", a.id);
+    if (error) { toast.error(error.message); return; }
+    toast.success(`${a.full_name} marked ${next}`);
+    qc.invalidateQueries({ queryKey: ["commission-agents"] });
+    qc.invalidateQueries({ queryKey: ["commission-agents-active"] });
+  };
+
   const removeAgent = async (id: string) => {
     const { error } = await supabase.from("commission_agents").delete().eq("id", id);
     if (error) { toast.error(error.message); return; }
@@ -250,6 +259,7 @@ function CommissionAgentsPage() {
                   <TableHead>Contact</TableHead>
                   <TableHead>Bank</TableHead>
                   <TableHead className="text-right">TDS</TableHead>
+                  <TableHead>Status</TableHead>
                   <TableHead className="text-right">Commission (Total)</TableHead>
                   <TableHead className="text-right">TDS (Total)</TableHead>
                   <TableHead className="text-right print:hidden">Actions</TableHead>
@@ -257,7 +267,7 @@ function CommissionAgentsPage() {
               </TableHeader>
               <TableBody>
                 {agents.length === 0 ? (
-                  <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">No commission agents yet.</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">No commission agents yet.</TableCell></TableRow>
                 ) : agents.map(a => {
                   const t = totalsByAgent.get(a.id) ?? { gross: 0, tds: 0, net: 0 };
                   return (
@@ -282,6 +292,12 @@ function CommissionAgentsPage() {
                         {a.tds_enabled
                           ? <Badge variant="secondary">{tdsRateFor(a)}%</Badge>
                           : <Badge variant="outline">Off</Badge>}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Switch className="print:hidden" checked={a.status === "active"} onCheckedChange={() => toggleAgentStatus(a)} aria-label={`Mark ${a.full_name} active or inactive`} />
+                          <Badge variant={a.status === "active" ? "default" : "secondary"}>{a.status}</Badge>
+                        </div>
                       </TableCell>
                       <TableCell className="text-right">{fmtINR(t.gross)}</TableCell>
                       <TableCell className="text-right">{fmtINR(t.tds)}</TableCell>
