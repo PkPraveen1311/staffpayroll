@@ -131,6 +131,14 @@ function EmployeesPage() {
     qc.invalidateQueries({ queryKey: ["employees"] });
   };
 
+  const toggleStatus = async (e: Employee) => {
+    const next = e.status === "active" ? "inactive" : "active";
+    const { error } = await supabase.from("employees").update({ status: next }).eq("id", e.id);
+    if (error) { toast.error(error.message); return; }
+    toast.success(`${e.full_name} marked ${next}`);
+    qc.invalidateQueries({ queryKey: ["employees"] });
+  };
+
   const remove = async (id: string) => {
     if (!confirm("Delete this employee?")) return;
     const { error } = await supabase.from("employees").delete().eq("id", id);
@@ -309,7 +317,12 @@ function EmployeesPage() {
                   <TableCell className="font-mono text-xs">{e.pf_number || "—"}</TableCell>
                   <TableCell className="font-mono text-xs">{e.esi_number || "—"}</TableCell>
                   <TableCell className="text-right font-medium">{fmtINR(Number(e.basic_salary) + Number(e.hra) + Number(e.allowances) + Number(e.medical_allowance ?? 0) + Number(e.leave_encashment ?? 0) + Number(e.statutory_bonus ?? 0) + Number(e.special_allowance ?? 0))}</TableCell>
-                  <TableCell><Badge variant={e.status === "active" ? "default" : "secondary"}>{e.status}</Badge></TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <Switch className="no-print" checked={e.status === "active"} onCheckedChange={() => toggleStatus(e)} aria-label={`Mark ${e.full_name} active or inactive`} />
+                      <Badge variant={e.status === "active" ? "default" : "secondary"}>{e.status}</Badge>
+                    </div>
+                  </TableCell>
                   <TableCell className="text-right no-print">
                     <Button size="icon" variant="ghost" onClick={() => { setEditing(e); setOpen(true); }}><Pencil className="h-4 w-4" /></Button>
                     <Button size="icon" variant="ghost" onClick={() => remove(e.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
