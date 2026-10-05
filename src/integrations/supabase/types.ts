@@ -751,6 +751,71 @@ export type Database = {
           },
         ]
       }
+      salary_revisions: {
+        Row: {
+          allowances: number
+          basic_salary: number
+          created_at: string
+          effective_month: number
+          effective_year: number
+          employee_id: string
+          esi_enabled: boolean
+          hra: number
+          id: string
+          leave_encashment: number
+          medical_allowance: number
+          notes: string | null
+          pf_enabled: boolean
+          special_allowance: number
+          statutory_bonus: number
+          tds_enabled: boolean
+        }
+        Insert: {
+          allowances?: number
+          basic_salary?: number
+          created_at?: string
+          effective_month: number
+          effective_year: number
+          employee_id: string
+          esi_enabled?: boolean
+          hra?: number
+          id?: string
+          leave_encashment?: number
+          medical_allowance?: number
+          notes?: string | null
+          pf_enabled?: boolean
+          special_allowance?: number
+          statutory_bonus?: number
+          tds_enabled?: boolean
+        }
+        Update: {
+          allowances?: number
+          basic_salary?: number
+          created_at?: string
+          effective_month?: number
+          effective_year?: number
+          employee_id?: string
+          esi_enabled?: boolean
+          hra?: number
+          id?: string
+          leave_encashment?: number
+          medical_allowance?: number
+          notes?: string | null
+          pf_enabled?: boolean
+          special_allowance?: number
+          statutory_bonus?: number
+          tds_enabled?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "salary_revisions_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
