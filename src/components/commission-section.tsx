@@ -14,6 +14,7 @@ import { exportToXlsx } from "@/lib/xlsx-export";
 import { syncAgentAdvanceRepayments } from "@/lib/agent-advance-sync";
 import { fetchAgentAllowedWeekOffs } from "@/lib/agent-paid-days";
 import { FileSpreadsheet, Printer, Save } from "lucide-react";
+import { PasswordConfirmDialog } from "@/components/password-confirm-dialog";
 
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -153,6 +154,7 @@ export function CommissionSection() {
   const agents = useMemo(() => agentsData ?? [], [agentsData]);
   const rows = useMemo(() => rowsData ?? [], [rowsData]);
   const existing = useMemo(() => new Map(rows.map(r => [r.agent_id, r])), [rows]);
+  const [pwOpen, setPwOpen] = useState(false);
 
   const defaultDue = useMemo(() => {
     const d = new Date(year, month - 1 + 2, 7);
@@ -296,7 +298,11 @@ export function CommissionSection() {
           <Button variant="outline" onClick={exportExcel} disabled={!agents.length}><FileSpreadsheet className="h-4 w-4 mr-1" />Excel</Button>
 
           <Button variant="outline" onClick={() => window.print()}><Printer className="h-4 w-4 mr-1" />Print</Button>
-          <Button onClick={saveAll} disabled={saving || !agents.length}><Save className="h-4 w-4 mr-1" />{saving ? "Saving…" : "Save Month"}</Button>
+          <Button onClick={() => (rows.length ? setPwOpen(true) : saveAll())} disabled={saving || !agents.length}><Save className="h-4 w-4 mr-1" />{saving ? "Saving…" : rows.length ? "Re-save Month" : "Save Month"}</Button>
+          <PasswordConfirmDialog open={pwOpen} onOpenChange={setPwOpen}
+            title="Re-generate commission?"
+            description={`Commission for ${MONTHS[month - 1]} ${year} is already saved. Enter your password to re-generate it.`}
+            onConfirmed={saveAll} />
         </div>
       </div>
 
