@@ -14,6 +14,7 @@ import { exportPayrollRegisterXlsx } from "@/lib/payroll-xlsx";
 import { syncSalaryAdvanceRepayments } from "@/lib/advance-sync";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CommissionSection } from "@/components/commission-section";
+import { PasswordConfirmDialog } from "@/components/password-confirm-dialog";
 
 export const Route = createFileRoute("/_app/payroll")({ component: PayrollPage });
 
@@ -41,6 +42,7 @@ function EmployeePayroll() {
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [year, setYear] = useState(now.getFullYear());
   const [running, setRunning] = useState(false);
+  const [pwOpen, setPwOpen] = useState(false);
 
   const { data: run } = useQuery({
     queryKey: ["payroll_run", month, year],
@@ -288,7 +290,11 @@ function EmployeePayroll() {
               <SelectContent>{yearsList.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}</SelectContent>
             </Select>
           </div>
-          <Button onClick={generate} disabled={running} className="bg-gradient-primary text-primary-foreground">
+          <PasswordConfirmDialog open={pwOpen} onOpenChange={setPwOpen}
+            title="Re-run payroll?"
+            description={`Payroll for ${monthName(month)} ${year} is already generated. Enter your password to re-generate it.`}
+            onConfirmed={generate} />
+          <Button onClick={() => (run ? setPwOpen(true) : generate())} disabled={running} className="bg-gradient-primary text-primary-foreground">
             <Play className="h-4 w-4 mr-1" /> {running ? "Processing…" : run ? "Re-run" : "Run payroll"}
           </Button>
           <Button onClick={() => window.print()} variant="outline" disabled={!slips.length}>
