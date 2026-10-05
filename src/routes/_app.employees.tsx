@@ -82,6 +82,23 @@ type Employee = {
   pf_number?: string | null; esi_number?: string | null; uan?: string | null;
 };
 
+function grossOf(e: Partial<Employee>) {
+  return Number(e.basic_salary ?? 0) + Number(e.hra ?? 0) + Number(e.allowances ?? 0) +
+    Number(e.medical_allowance ?? 0) + Number(e.leave_encashment ?? 0) +
+    Number(e.statutory_bonus ?? 0) + Number(e.special_allowance ?? 0);
+}
+
+// CTC = gross + employer statutory contributions (same rules as payroll)
+function ctcOf(e: Partial<Employee>) {
+  const basic = Number(e.basic_salary ?? 0);
+  const pfWage = Math.min(15000, basic);
+  const employerPf = e.pf_enabled ? Math.round(pfWage * 0.12) : 0;
+  const edli = e.pf_enabled ? Math.round(pfWage * 0.005) : 0;
+  const pfAdmin = e.pf_enabled ? Math.round(pfWage * 0.005) : 0;
+  const employerEsi = e.esi_enabled ? Math.ceil(basic * 0.0325) : 0;
+  return grossOf(e) + employerPf + edli + pfAdmin + employerEsi;
+}
+
 const empty: Partial<Employee> = {
   employee_code: "", full_name: "", email: "", phone: "", department: "", designation: "",
   joining_date: new Date().toISOString().slice(0,10),
@@ -171,7 +188,8 @@ function EmployeesPage() {
       "Leave Enc.": Number(e.leave_encashment),
       Bonus: Number(e.statutory_bonus),
       Special: Number(e.special_allowance),
-      "CTC/Month": Number(e.basic_salary) + Number(e.hra) + Number(e.allowances) + Number(e.medical_allowance) + Number(e.leave_encashment) + Number(e.statutory_bonus) + Number(e.special_allowance),
+      "Gross/Month": grossOf(e),
+      "CTC/Month": ctcOf(e),
       PF: e.pf_enabled ? "Yes" : "No",
       ESI: e.esi_enabled ? "Yes" : "No",
       TDS: e.tds_enabled ? "Yes" : "No",
@@ -316,7 +334,7 @@ function EmployeesPage() {
                   <TableCell className="font-mono text-xs">{e.uan || "—"}</TableCell>
                   <TableCell className="font-mono text-xs">{e.pf_number || "—"}</TableCell>
                   <TableCell className="font-mono text-xs">{e.esi_number || "—"}</TableCell>
-                  <TableCell className="text-right font-medium">{fmtINR(Number(e.basic_salary) + Number(e.hra) + Number(e.allowances) + Number(e.medical_allowance ?? 0) + Number(e.leave_encashment ?? 0) + Number(e.statutory_bonus ?? 0) + Number(e.special_allowance ?? 0))}</TableCell>
+                  <TableCell className="text-right font-medium">{fmtINR(ctcOf(e))}</TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <Switch className="no-print" checked={e.status === "active"} onCheckedChange={() => toggleStatus(e)} aria-label={`Mark ${e.full_name} active or inactive`} />
