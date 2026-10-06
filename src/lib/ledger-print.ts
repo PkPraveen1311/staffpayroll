@@ -30,6 +30,9 @@ const fmtDate = (d: string) => {
 export function printLedgers(title: string, ledgers: PrintableLedger[]) {
   if (!ledgers.length) return;
   const today = new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+  const styles = getComputedStyle(document.documentElement);
+  const tokenNames = ["paper", "ink", "muted", "border", "heading", "heading-fill", "stripe", "total-fill", "positive", "negative"];
+  const printTokens = tokenNames.map((name) => `--print-${name}:${styles.getPropertyValue(`--print-${name}`).trim()};`).join("");
 
   const blocks = ledgers.map((l) => `
     <section class="ledger">
@@ -63,19 +66,24 @@ export function printLedgers(title: string, ledgers: PrintableLedger[]) {
   const html = `<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title>
   <style>
     @page { size: A4 portrait; margin: 12mm; }
-    body { font-family: Arial, Helvetica, sans-serif; color: #000; font-size: 11px; }
-    h1 { font-size: 16px; margin: 0; }
-    .meta { font-size: 10px; color: #444; margin: 2px 0 14px; }
+    :root { ${printTokens} }
+    * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    body { font-family: Arial, Helvetica, sans-serif; color: var(--print-ink); background: var(--print-paper); font-size: 11px; }
+    h1 { font-size: 16px; margin: 0; color: var(--print-heading); }
+    .meta { font-size: 10px; color: var(--print-muted); margin: 2px 0 14px; }
     .ledger { margin-bottom: 16px; page-break-inside: avoid; }
-    .head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
+    .head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; color: var(--print-heading); }
     .name { font-weight: bold; font-size: 12px; }
-    .code { font-size: 10px; color: #555; }
-    .bal { font-weight: bold; }
+    .code { font-size: 10px; color: var(--print-muted); }
+    .bal { font-weight: bold; color: var(--print-positive); }
     table { width: 100%; border-collapse: collapse; }
-    th, td { border: 1px solid #999; padding: 3px 6px; }
-    thead { background: #eee; }
+    th, td { border: 1px solid var(--print-border); padding: 3px 6px; }
+    thead { background: var(--print-heading-fill); color: var(--print-heading); }
+    tbody tr:nth-child(even) { background: var(--print-stripe); }
+    tbody td:nth-child(3) { color: var(--print-negative); }
+    tbody td:nth-child(4) { color: var(--print-positive); }
     .r { text-align: right; }
-    .tot { font-weight: bold; background: #f5f5f5; }
+    .tot { font-weight: bold; background: var(--print-total-fill) !important; color: var(--print-positive); }
   </style></head>
   <body>
     <h1>${esc(title)}</h1>

@@ -1,0 +1,2 @@
+- [ ] Add coordinated colors to all browser-printed documents and advance ledgers.
+- [ ] Verify colored output with existing records and preserved page breaks.

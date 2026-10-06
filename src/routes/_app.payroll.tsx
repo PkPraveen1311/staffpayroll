@@ -264,11 +264,10 @@ function EmployeePayroll() {
           @page { size: A4 landscape; margin: 10mm; }
           html, body { background: white !important; }
           body * { visibility: hidden !important; }
-          .print-area, .print-area * { visibility: visible !important; color: #000 !important; }
+          .print-area, .print-area * { visibility: visible !important; }
           .print-area { position: absolute !important; left: 0; top: 0; width: 100%; background: white !important; box-shadow: none !important; border: none !important; }
           .print-area table { font-size: 10px; border-collapse: collapse; width: 100%; }
-          .print-area th, .print-area td { border: 1px solid #999 !important; padding: 4px 6px !important; }
-          .print-area thead { background: #f0f0f0 !important; }
+          .print-area th, .print-area td { border: 1px solid var(--print-border) !important; padding: 4px 6px !important; }
           .no-print { display: none !important; }
         }
       `}</style>
