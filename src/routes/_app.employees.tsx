@@ -10,13 +10,14 @@ import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Pencil, Trash2, Search, Printer, FileSpreadsheet } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Printer, FileSpreadsheet, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
 import { fmtINR } from "@/lib/format";
 import { exportToXlsx } from "@/lib/xlsx-export";
 import { ExcelImportDialog } from "@/components/excel-import-dialog";
 import { pick, toBool, toDate, toNumber, type SheetRow } from "@/lib/excel-import";
 import { importByCode } from "@/lib/excel-upsert";
+import { SalaryRevisionDialog } from "@/components/salary-revision-dialog";
 
 const EMP_TEMPLATE_HEADERS = [
   "Code", "Name", "Email", "Phone", "Department", "Designation", "Joining Date", "Date of Birth",
@@ -112,6 +113,7 @@ function EmployeesPage() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Partial<Employee> | null>(null);
   const [q, setQ] = useState("");
+  const [revising, setRevising] = useState<Employee | null>(null);
 
   const { data: employees = [], isLoading } = useQuery({
     queryKey: ["employees"],
@@ -342,6 +344,7 @@ function EmployeesPage() {
                     </div>
                   </TableCell>
                   <TableCell className="text-right no-print">
+                    <Button size="icon" variant="ghost" title="Restructure salary" onClick={() => setRevising(e)}><TrendingUp className="h-4 w-4" /></Button>
                     <Button size="icon" variant="ghost" onClick={() => { setEditing(e); setOpen(true); }}><Pencil className="h-4 w-4" /></Button>
                     <Button size="icon" variant="ghost" onClick={() => remove(e.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                   </TableCell>
@@ -351,6 +354,7 @@ function EmployeesPage() {
           </Table>
         </div>
       </Card>
+      <SalaryRevisionDialog employee={revising as any} open={!!revising} onOpenChange={(o) => { if (!o) setRevising(null); }} ctcOf={ctcOf} />
     </div>
   );
 }
