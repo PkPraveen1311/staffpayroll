@@ -193,7 +193,7 @@ function EmployeePayroll() {
         const incentive = round(incentiveMap.get(e.id) ?? 0);
         const advance = round(advanceMap.get(e.id) ?? 0);
 
-        const pfWage = Math.min(15000, basic);
+        const pfWage = Math.min(25000, basic);
         const employer_pf = e.pf_enabled ? round(pfWage * 0.12) : 0;
         const edli = e.pf_enabled ? round(pfWage * 0.005) : 0;
         const pf_admin_charges = e.pf_enabled ? round(pfWage * 0.005) : 0;

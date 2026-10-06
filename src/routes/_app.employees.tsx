@@ -92,7 +92,7 @@ function grossOf(e: Partial<Employee>) {
 // CTC = gross + employer statutory contributions (same rules as payroll)
 function ctcOf(e: Partial<Employee>) {
   const basic = Number(e.basic_salary ?? 0);
-  const pfWage = Math.min(15000, basic);
+  const pfWage = Math.min(25000, basic);
   const employerPf = e.pf_enabled ? Math.round(pfWage * 0.12) : 0;
   const edli = e.pf_enabled ? Math.round(pfWage * 0.005) : 0;
   const pfAdmin = e.pf_enabled ? Math.round(pfWage * 0.005) : 0;
