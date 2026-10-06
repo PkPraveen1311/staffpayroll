@@ -84,9 +84,9 @@ function ChallansPage() {
     .filter((s: any) => s.employees?.pf_enabled && Number(s.pf) > 0)
     .map((s: any) => {
       const fullBasic = Number(s.employees?.basic_salary ?? 0);
-      const pfWage = Number(s.employer_pf) > 0 ? Number(s.employer_pf) / 0.12 : (fullBasic > 15000 ? 15000 : Number(s.basic));
+      const pfWage = Number(s.employer_pf) > 0 ? Number(s.employer_pf) / 0.12 : (fullBasic > 25000 ? 25000 : Number(s.basic));
       const age = ageOn(s.employees?.date_of_birth);
-      const eps = age >= 58 ? 0 : Math.min(pfWage, 15000) * 0.0833;
+      const eps = age >= 58 ? 0 : Math.min(pfWage, 25000) * 0.0833;
       const epf = Number(s.employer_pf) - eps;
       return {
         id: s.id,
