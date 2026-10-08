@@ -77,11 +77,9 @@ function buildSheet(
 
   const headerRow = ws.addRow(headers);
   headerRow.height = 20;
-  headerRow.eachCell((cell, col) => {
-    const dayIdx = col - 5;
-    const isSun = dayIdx >= 0 && dayIdx < days.length && sundays.has(days[dayIdx]);
+  headerRow.eachCell((cell) => {
     cell.font = { name: "Calibri", size: 10, bold: true, color: { argb: "FFFFFFFF" } };
-    cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: isSun ? "FF9B1C1C" : accent } };
+    cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: accent } };
     cell.alignment = { horizontal: "center", vertical: "middle" };
     cell.border = BORDER;
   });

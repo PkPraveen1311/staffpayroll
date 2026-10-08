@@ -270,7 +270,7 @@ function AttendanceSheetPage() {
               <th className="border border-border px-1 py-1 text-left sticky left-0 bg-muted/40 print:bg-white">#</th>
               <th className="border border-border px-2 py-1 text-left sticky left-6 bg-muted/40 print:bg-white min-w-[140px]">Name</th>
               {days.map((d) => (
-                <th key={d} data-sunday={isSunday(d)} className={`border border-border px-0.5 py-1 text-center w-6 ${isSunday(d) ? "bg-rose-500/10 print:bg-gray-200" : ""}`}>{d}</th>
+                <th key={d} className="border border-border px-0.5 py-1 text-center w-6">{d}</th>
               ))}
               <th className="border border-border px-1 py-1 text-center w-7">P</th>
               <th className="border border-border px-1 py-1 text-center w-7">A</th>
@@ -296,8 +296,7 @@ function AttendanceSheetPage() {
                     return (
                       <td
                         key={d}
-                         data-sunday={isSunday(d)}
-                        className={`border border-border px-0.5 py-0.5 text-center font-semibold ${isSunday(d) ? "bg-rose-500/5 print:bg-gray-100" : ""} ${s ? STATUS_COLOR[s] : "text-muted-foreground print:text-gray-400"}`}
+                        className={`border border-border px-0.5 py-0.5 text-center font-semibold ${s ? STATUS_COLOR[s] : "text-muted-foreground print:text-gray-400"}`}
                       >
                         {s ? STATUS_SHORT[s] : "-"}
                       </td>

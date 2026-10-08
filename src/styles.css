@@ -222,7 +222,6 @@
     background: var(--print-total-fill) !important;
     color: var(--print-positive) !important;
   }
-  .print-area .attendance-print-page [data-sunday="true"] { background: var(--print-sunday) !important; }
   .no-print, [data-sidebar], header.no-print { display: none !important; }
   .print-page + .print-page { break-before: page; page-break-before: always; }
   .print-area[data-print-only] .print-page:not([data-challan]) { display: none !important; }
