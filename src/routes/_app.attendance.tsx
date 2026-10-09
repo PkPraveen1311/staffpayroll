@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Calendar, Check, X, Clock, Plane, CalendarDays, Search, Eraser, ChevronLeft, ChevronRight, Briefcase } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { PasswordConfirmDialog } from "@/components/password-confirm-dialog";
 
 export const Route = createFileRoute("/_app/attendance")({
   component: AttendancePage,
@@ -368,6 +369,8 @@ function MonthlyView({ cfg, people }: { cfg: RosterConfig; people: any[] }) {
   const [personId, setPersonId] = useState<string>("");
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
+  const [clearOpen, setClearOpen] = useState(false);
+  const [clearing, setClearing] = useState(false);
 
   const selected = personId || people[0]?.id || "";
   const monthStart = `${year}-${String(month).padStart(2, "0")}-01`;
