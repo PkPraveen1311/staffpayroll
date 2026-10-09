@@ -18,6 +18,7 @@ import { exportToXlsx } from "@/lib/xlsx-export";
 import { ExcelImportDialog } from "@/components/excel-import-dialog";
 import { pick, toBool, toDate, type SheetRow } from "@/lib/excel-import";
 import { importByCode } from "@/lib/excel-upsert";
+import { ExitDateDialog } from "@/components/exit-date-dialog";
 
 const AGENT_TEMPLATE_HEADERS = [
   "Code", "Name", "PAN", "Aadhaar", "Phone", "Email", "Address", "Department", "Designation",
@@ -178,18 +179,25 @@ function CommissionAgentsPage() {
     qc.invalidateQueries({ queryKey: ["commission-agents"] });
   };
 
+  const [exitTarget, setExitTarget] = useState<Agent | null>(null);
+
   const toggleAgentStatus = async (a: Agent) => {
     const next = a.status === "active" ? "inactive" : "active";
-    let exit_date: string | null = null;
-    if (next === "inactive") {
-      const d = window.prompt(`Exit / last working date for ${a.full_name} (YYYY-MM-DD). They stay in payroll & attendance for that month only.`, new Date().toISOString().slice(0, 10));
-      if (d === null) return;
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) { toast.error("Enter date as YYYY-MM-DD"); return; }
-      exit_date = d;
-    }
-    const { error } = await supabase.from("commission_agents").update({ status: next, exit_date } as any).eq("id", a.id);
+    if (next === "inactive") { setExitTarget(a); return; }
+    const { error } = await supabase.from("commission_agents").update({ status: next, exit_date: null } as any).eq("id", a.id);
     if (error) { toast.error(error.message); return; }
     toast.success(`${a.full_name} marked ${next}`);
+    qc.invalidateQueries({ queryKey: ["commission-agents"] });
+    qc.invalidateQueries({ queryKey: ["commission-agents-active"] });
+  };
+
+  const confirmAgentExit = async (exit_date: string) => {
+    const a = exitTarget;
+    if (!a) return;
+    setExitTarget(null);
+    const { error } = await supabase.from("commission_agents").update({ status: "inactive", exit_date } as any).eq("id", a.id);
+    if (error) { toast.error(error.message); return; }
+    toast.success(`${a.full_name} marked inactive`);
     qc.invalidateQueries({ queryKey: ["commission-agents"] });
     qc.invalidateQueries({ queryKey: ["commission-agents-active"] });
   };
@@ -452,6 +460,7 @@ function CommissionAgentsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <ExitDateDialog open={!!exitTarget} personName={exitTarget?.full_name ?? ""} onOpenChange={(o) => { if (!o) setExitTarget(null); }} onConfirm={confirmAgentExit} />
     </div>
   );
 }
