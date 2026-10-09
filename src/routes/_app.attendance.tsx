@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Calendar, Check, X, Clock, Plane, CalendarDays, Search, Eraser, ChevronLeft, ChevronRight, Briefcase } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { PasswordConfirmDialog } from "@/components/password-confirm-dialog";
 
 export const Route = createFileRoute("/_app/attendance")({
   component: AttendancePage,
@@ -368,6 +369,8 @@ function MonthlyView({ cfg, people }: { cfg: RosterConfig; people: any[] }) {
   const [personId, setPersonId] = useState<string>("");
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
+  const [clearOpen, setClearOpen] = useState(false);
+  const [clearing, setClearing] = useState(false);
 
   const selected = personId || people[0]?.id || "";
   const monthStart = `${year}-${String(month).padStart(2, "0")}-01`;
@@ -449,6 +452,26 @@ function MonthlyView({ cfg, people }: { cfg: RosterConfig; people: any[] }) {
     qc.invalidateQueries({ queryKey: [`${cfg.recordsKey}-month`, selected, year, month] });
   };
 
+  const clearMonth = async () => {
+    if (!selected) return;
+    setClearing(true);
+    try {
+      const { error } = await supabase
+        .from(cfg.table)
+        .delete()
+        .eq(cfg.fk as any, selected)
+        .gte("date", monthStart)
+        .lte("date", monthEnd);
+      if (error) throw error;
+      toast.success(`Cleared ${monthLabel} attendance`);
+      qc.invalidateQueries({ queryKey: [`${cfg.recordsKey}-month`, selected, year, month] });
+    } catch (e: any) {
+      toast.error(e.message ?? "Could not clear attendance");
+    } finally {
+      setClearing(false);
+    }
+  };
+
   const shiftMonth = (delta: number) => {
     const d = new Date(year, month - 1 + delta, 1);
     setYear(d.getFullYear());
@@ -485,6 +508,21 @@ function MonthlyView({ cfg, people }: { cfg: RosterConfig; people: any[] }) {
               <Button variant="outline" size="sm" onClick={() => { setYear(now.getFullYear()); setMonth(now.getMonth() + 1); }}>This month</Button>
             </div>
           </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={!selected || monthRecs.length === 0 || clearing}
+            onClick={() => setClearOpen(true)}
+          >
+            <Eraser className="h-4 w-4 mr-1" /> Clear month
+          </Button>
+          <PasswordConfirmDialog
+            open={clearOpen}
+            onOpenChange={setClearOpen}
+            title="Clear this month's attendance?"
+            description={`This will permanently delete all ${monthLabel} attendance records for the selected ${cfg.label.toLowerCase()}. Enter your password to confirm.`}
+            onConfirmed={clearMonth}
+          />
         </CardContent>
       </Card>
 
