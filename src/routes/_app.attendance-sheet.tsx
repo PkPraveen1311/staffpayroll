@@ -67,12 +67,12 @@ function AttendanceSheetPage() {
   const endDate = `${year}-${pad(month)}-${pad(daysInMonth)}`;
 
   const { data: employees = [] } = useQuery({
-    queryKey: ["employees-active-sheet"],
+    queryKey: ["employees-active-sheet", startDate],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("employees")
         .select("id, employee_code, full_name, department")
-        .eq("status", "active")
+        .or(`status.eq.active,exit_date.gte.${startDate}`)
         .order("employee_code");
       if (error) throw error;
       return data ?? [];
@@ -80,12 +80,12 @@ function AttendanceSheetPage() {
   });
 
   const { data: agents = [] } = useQuery({
-    queryKey: ["agents-active-sheet"],
+    queryKey: ["agents-active-sheet", startDate],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("commission_agents")
         .select("id, agent_code, full_name, department")
-        .eq("status", "active")
+        .or(`status.eq.active,exit_date.gte.${startDate}`)
         .order("agent_code");
       if (error) throw error;
       return data ?? [];

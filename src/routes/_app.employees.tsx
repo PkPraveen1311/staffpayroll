@@ -152,7 +152,14 @@ function EmployeesPage() {
 
   const toggleStatus = async (e: Employee) => {
     const next = e.status === "active" ? "inactive" : "active";
-    const { error } = await supabase.from("employees").update({ status: next }).eq("id", e.id);
+    let exit_date: string | null = null;
+    if (next === "inactive") {
+      const d = window.prompt(`Exit / last working date for ${e.full_name} (YYYY-MM-DD). They stay in payroll & attendance for that month only.`, new Date().toISOString().slice(0, 10));
+      if (d === null) return;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) { toast.error("Enter date as YYYY-MM-DD"); return; }
+      exit_date = d;
+    }
+    const { error } = await supabase.from("employees").update({ status: next, exit_date } as any).eq("id", e.id);
     if (error) { toast.error(error.message); return; }
     toast.success(`${e.full_name} marked ${next}`);
     qc.invalidateQueries({ queryKey: ["employees"] });
@@ -340,7 +347,7 @@ function EmployeesPage() {
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <Switch className="no-print" checked={e.status === "active"} onCheckedChange={() => toggleStatus(e)} aria-label={`Mark ${e.full_name} active or inactive`} />
-                      <Badge variant={e.status === "active" ? "default" : "secondary"}>{e.status}</Badge>
+                      <Badge variant={e.status === "active" ? "default" : "secondary"}>{e.status === "active" ? "active" : ((e as any).exit_date ? `exit ${(e as any).exit_date}` : "inactive")}</Badge>
                     </div>
                   </TableCell>
                   <TableCell className="text-right no-print">

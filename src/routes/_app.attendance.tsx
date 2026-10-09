@@ -64,7 +64,7 @@ function usePeople(cfg: RosterConfig) {
       const { data, error } = await supabase
         .from(cfg.peopleTable)
         .select(`id, full_name, ${cfg.codeField}, department`)
-        .eq("status", "active")
+        .or(`status.eq.active,exit_date.gte.${(() => { const d = new Date(); d.setMonth(d.getMonth() - 1, 1); return d.toISOString().slice(0, 10); })()}`)
         .order("full_name");
       if (error) throw error;
       return (data ?? []) as any[];
