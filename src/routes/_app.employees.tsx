@@ -18,6 +18,7 @@ import { ExcelImportDialog } from "@/components/excel-import-dialog";
 import { pick, toBool, toDate, toNumber, type SheetRow } from "@/lib/excel-import";
 import { importByCode } from "@/lib/excel-upsert";
 import { SalaryRevisionDialog } from "@/components/salary-revision-dialog";
+import { ExitDateDialog } from "@/components/exit-date-dialog";
 
 const EMP_TEMPLATE_HEADERS = [
   "Code", "Name", "Email", "Phone", "Department", "Designation", "Joining Date", "Date of Birth",
@@ -150,18 +151,24 @@ function EmployeesPage() {
     qc.invalidateQueries({ queryKey: ["employees"] });
   };
 
+  const [exitTarget, setExitTarget] = useState<Employee | null>(null);
+
   const toggleStatus = async (e: Employee) => {
     const next = e.status === "active" ? "inactive" : "active";
-    let exit_date: string | null = null;
-    if (next === "inactive") {
-      const d = window.prompt(`Exit / last working date for ${e.full_name} (YYYY-MM-DD). They stay in payroll & attendance for that month only.`, new Date().toISOString().slice(0, 10));
-      if (d === null) return;
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) { toast.error("Enter date as YYYY-MM-DD"); return; }
-      exit_date = d;
-    }
-    const { error } = await supabase.from("employees").update({ status: next, exit_date } as any).eq("id", e.id);
+    if (next === "inactive") { setExitTarget(e); return; }
+    const { error } = await supabase.from("employees").update({ status: next, exit_date: null } as any).eq("id", e.id);
     if (error) { toast.error(error.message); return; }
     toast.success(`${e.full_name} marked ${next}`);
+    qc.invalidateQueries({ queryKey: ["employees"] });
+  };
+
+  const confirmExit = async (exit_date: string) => {
+    const e = exitTarget;
+    if (!e) return;
+    setExitTarget(null);
+    const { error } = await supabase.from("employees").update({ status: "inactive", exit_date } as any).eq("id", e.id);
+    if (error) { toast.error(error.message); return; }
+    toast.success(`${e.full_name} marked inactive`);
     qc.invalidateQueries({ queryKey: ["employees"] });
   };
 
@@ -362,6 +369,7 @@ function EmployeesPage() {
         </div>
       </Card>
       <SalaryRevisionDialog employee={revising as any} open={!!revising} onOpenChange={(o) => { if (!o) setRevising(null); }} ctcOf={ctcOf} />
+      <ExitDateDialog open={!!exitTarget} personName={exitTarget?.full_name ?? ""} onOpenChange={(o) => { if (!o) setExitTarget(null); }} onConfirm={confirmExit} />
     </div>
   );
 }
