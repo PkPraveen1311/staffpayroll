@@ -8,6 +8,13 @@
       "when": 1791191638059,
       "tag": "0000_salary_revisions",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1791535926660,
+      "tag": "0001_exit_date",
+      "breakpoints": true
     }
   ]
 }

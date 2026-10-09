@@ -287,6 +287,7 @@ export type Database = {
           department: string | null
           designation: string | null
           email: string | null
+          exit_date: string | null
           fixed_monthly_amount: number
           full_name: string
           id: string
@@ -312,6 +313,7 @@ export type Database = {
           department?: string | null
           designation?: string | null
           email?: string | null
+          exit_date?: string | null
           fixed_monthly_amount?: number
           full_name: string
           id?: string
@@ -337,6 +339,7 @@ export type Database = {
           department?: string | null
           designation?: string | null
           email?: string | null
+          exit_date?: string | null
           fixed_monthly_amount?: number
           full_name?: string
           id?: string
@@ -463,6 +466,7 @@ export type Database = {
           employee_code: string
           esi_enabled: boolean
           esi_number: string | null
+          exit_date: string | null
           full_name: string
           hra: number
           id: string
@@ -494,6 +498,7 @@ export type Database = {
           employee_code: string
           esi_enabled?: boolean
           esi_number?: string | null
+          exit_date?: string | null
           full_name: string
           hra?: number
           id?: string
@@ -525,6 +530,7 @@ export type Database = {
           employee_code?: string
           esi_enabled?: boolean
           esi_number?: string | null
+          exit_date?: string | null
           full_name?: string
           hra?: number
           id?: string
