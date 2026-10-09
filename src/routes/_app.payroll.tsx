@@ -84,7 +84,7 @@ function EmployeePayroll() {
       const monthStart = `${year}-${String(month).padStart(2, "0")}-01`;
       const monthEnd = `${year}-${String(month).padStart(2, "0")}-${String(daysInMonth).padStart(2, "0")}`;
 
-      const { data: rawEmployees, error: ee } = await supabase.from("employees").select("*").eq("status", "active");
+      const { data: rawEmployees, error: ee } = await supabase.from("employees").select("*").or(`status.eq.active,exit_date.gte.${monthStart}`);
       if (ee) throw ee;
       // Use the salary structure (revision) effective for this payroll month
       const employees = await applySalaryRevisions(rawEmployees ?? [], year, month);

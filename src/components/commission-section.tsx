@@ -51,12 +51,12 @@ export function CommissionSection() {
   const [saving, setSaving] = useState(false);
 
   const { data: agentsData } = useQuery<Agent[]>({
-    queryKey: ["commission-agents-active"],
+    queryKey: ["commission-agents-active", year, month],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("commission_agents")
         .select("id, agent_code, full_name, pan, bank_account, ifsc_code, bank_name, tds_enabled, status, pay_type, fixed_monthly_amount")
-        .eq("status", "active")
+        .or(`status.eq.active,exit_date.gte.${year}-${pad(month)}-01`)
         .order("full_name");
       if (error) throw error;
       return (data ?? []) as Agent[];
