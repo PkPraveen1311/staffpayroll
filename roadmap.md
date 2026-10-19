@@ -1,2 +1,4 @@
 - [x] Add coordinated colors to all browser-printed documents and advance ledgers.
 - [x] Verify colored output with existing records and preserved page breaks.
+- [ ] Allow editing employee and agent exit dates.
+- [ ] Record exact salary revision dates and apply changes to the whole effective month; verify both flows.
