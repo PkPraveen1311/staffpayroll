@@ -3,31 +3,34 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { revisionMonth } from "@/lib/salary-revisions";
 
 /** Asks for a person's exit / last working date before marking them inactive. */
 export function ExitDateDialog({
-  open, onOpenChange, personName, onConfirm,
+  open, onOpenChange, personName, onConfirm, initialDate, editing = false,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
   personName: string;
   onConfirm: (exitDate: string) => void;
+  initialDate?: string | null;
+  editing?: boolean;
 }) {
   const [date, setDate] = useState("");
   const [error, setError] = useState("");
 
   useEffect(() => {
     if (open) {
-      setDate(new Date().toISOString().slice(0, 10));
+      setDate(initialDate || new Date().toISOString().slice(0, 10));
       setError("");
     }
-  }, [open]);
+  }, [open, initialDate]);
 
   const close = (o: boolean) => { if (!o) setError(""); onOpenChange(o); };
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { setError("Enter date as YYYY-MM-DD"); return; }
+    if (!revisionMonth(date)) { setError("Enter a valid last working date"); return; }
     close(false);
     onConfirm(date);
   };
@@ -37,7 +40,7 @@ export function ExitDateDialog({
       <DialogContent>
         <form onSubmit={submit} className="space-y-4">
           <DialogHeader>
-            <DialogTitle>Mark {personName} as exited?</DialogTitle>
+            <DialogTitle>{editing ? `Edit exit date — ${personName}` : `Mark ${personName} as exited?`}</DialogTitle>
             <DialogDescription>Enter their last working date. They stay in payroll & attendance for that month only.</DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
@@ -47,7 +50,7 @@ export function ExitDateDialog({
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => close(false)}>Cancel</Button>
-            <Button type="submit">Confirm</Button>
+            <Button type="submit">{editing ? "Save date" : "Confirm"}</Button>
           </DialogFooter>
         </form>
       </DialogContent>

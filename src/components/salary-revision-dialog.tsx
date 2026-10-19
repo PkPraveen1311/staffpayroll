@@ -6,10 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Trash2 } from "lucide-react";
+import { Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { fmtINR } from "@/lib/format";
-import { applySalaryRevisions, type SalaryRevision } from "@/lib/salary-revisions";
+import { resolveSalaryRevisions, revisionMonth, type SalaryRevision } from "@/lib/salary-revisions";
 
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const NUM_FIELDS: [keyof SalaryRevision, string][] = [
@@ -26,17 +26,21 @@ export function SalaryRevisionDialog({ employee, open, onOpenChange, ctcOf }: {
   const qc = useQueryClient();
   const now = new Date();
   const next = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-  const [year, setYear] = useState(next.getFullYear());
-  const [month, setMonth] = useState(next.getMonth() + 1);
+  const [effectiveDate, setEffectiveDate] = useState(`${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, "0")}-01`);
+  const period = revisionMonth(effectiveDate);
+  const year = period?.year ?? next.getFullYear();
+  const month = period?.month ?? next.getMonth() + 1;
   const [form, setForm] = useState<Record<string, any>>({});
   const [notes, setNotes] = useState("");
+  const [saving, setSaving] = useState(false);
 
   const { data: revisions = [] } = useQuery({
     queryKey: ["salary_revisions", employee?.id],
     enabled: !!employee && open,
     queryFn: async () => {
+      if (!employee) return [];
       const { data, error } = await supabase.from("salary_revisions").select("*")
-        .eq("employee_id", employee!.id).order("effective_year").order("effective_month");
+        .eq("employee_id", employee.id).order("effective_year").order("effective_month");
       if (error) throw error;
       return data as SalaryRevision[];
     },
@@ -45,26 +49,32 @@ export function SalaryRevisionDialog({ employee, open, onOpenChange, ctcOf }: {
   // Prefill with the structure effective for the chosen month
   useEffect(() => {
     if (!employee || !open) return;
-    applySalaryRevisions([employee], year, month).then(([e]) => {
+    const [e] = resolveSalaryRevisions([employee], revisions, year, month);
+    if (e) {
       setForm({
         basic_salary: e.basic_salary, hra: e.hra, allowances: e.allowances,
         medical_allowance: e.medical_allowance, leave_encashment: e.leave_encashment,
         statutory_bonus: e.statutory_bonus, special_allowance: e.special_allowance,
         pf_enabled: e.pf_enabled, esi_enabled: e.esi_enabled, tds_enabled: e.tds_enabled,
       });
-    });
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [employee?.id, open, year, month, revisions.length]);
+  }, [employee, open, year, month, revisions]);
+
+  useEffect(() => { if (open) setNotes(""); }, [open, employee?.id]);
 
   const save = async () => {
     if (!employee) return;
-    const payload: any = { employee_id: employee.id, effective_year: year, effective_month: month, notes: notes || null };
+    if (!period) { toast.error("Enter a valid effective date"); return; }
+    setSaving(true);
+    const payload: any = { employee_id: employee.id, effective_year: year, effective_month: month, effective_date: effectiveDate, notes: notes || null };
     for (const [f] of NUM_FIELDS) payload[f] = Number(form[f]) || 0;
     payload.pf_enabled = !!form.pf_enabled; payload.esi_enabled = !!form.esi_enabled; payload.tds_enabled = !!form.tds_enabled;
     const { error } = await supabase.from("salary_revisions")
       .upsert(payload, { onConflict: "employee_id,effective_year,effective_month" });
+    setSaving(false);
     if (error) { toast.error(error.message); return; }
-    toast.success(`New salary for ${employee.full_name} effective ${MONTHS[month - 1]} ${year}`);
+    toast.success(`Salary revision saved from ${effectiveDate} for all of ${MONTHS[month - 1]} ${year}`);
     setNotes("");
     qc.invalidateQueries({ queryKey: ["salary_revisions"] });
   };
@@ -84,21 +94,14 @@ export function SalaryRevisionDialog({ employee, open, onOpenChange, ctcOf }: {
         <DialogHeader>
           <DialogTitle>Restructure salary — {employee?.full_name}</DialogTitle>
           <DialogDescription>
-            Set a revised salary, or start/stop PF, ESI or TDS, from a chosen month. Payroll for that month and later uses the new structure; earlier months keep the old one.
+            Effective date is recorded exactly. Revised salary and PF, ESI or TDS settings apply to the whole effective month onward; earlier months stay unchanged.
           </DialogDescription>
         </DialogHeader>
 
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-1.5">
-            <Label className="text-xs">Effective from month</Label>
-            <select className="h-9 w-full rounded-md border border-input bg-transparent px-2 text-sm"
-              value={month} onChange={(e) => setMonth(Number(e.target.value))}>
-              {MONTHS.map((m, i) => <option key={m} value={i + 1} className="bg-background">{m}</option>)}
-            </select>
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs">Year</Label>
-            <Input type="number" value={year} onChange={(e) => setYear(Number(e.target.value))} />
+            <Label htmlFor="revision-date" className="text-xs">Effective date</Label>
+            <Input id="revision-date" type="date" value={effectiveDate} onChange={(e) => setEffectiveDate(e.target.value)} />
           </div>
           {NUM_FIELDS.map(([f, label]) => (
             <div key={f} className="space-y-1.5">
@@ -130,11 +133,14 @@ export function SalaryRevisionDialog({ employee, open, onOpenChange, ctcOf }: {
               {revisions.map((r) => (
                 <div key={r.id} className="flex items-center justify-between px-3 py-2">
                   <div>
-                    <b>{MONTHS[r.effective_month - 1]} {r.effective_year}</b> — Basic {fmtINR(Number(r.basic_salary))}, CTC {fmtINR(ctcOf(r))}
+                    <b>{r.effective_date ?? `${r.effective_year}-${String(r.effective_month).padStart(2, "0")}-01`}</b> — Basic {fmtINR(Number(r.basic_salary))}, CTC {fmtINR(ctcOf(r))}
                     {" · "}PF {r.pf_enabled ? "Yes" : "No"} · ESI {r.esi_enabled ? "Yes" : "No"}
                     {r.notes && <span className="text-muted-foreground"> · {r.notes}</span>}
                   </div>
-                  <Button size="icon" variant="ghost" onClick={() => remove(r.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                  <div className="flex shrink-0">
+                    <Button size="icon" variant="ghost" title="Edit salary revision" aria-label={`Edit salary revision ${r.effective_date}`} onClick={() => { setEffectiveDate(r.effective_date ?? `${r.effective_year}-${String(r.effective_month).padStart(2, "0")}-01`); setForm({ ...r }); setNotes(r.notes ?? ""); }}><Pencil className="h-4 w-4" /></Button>
+                    <Button size="icon" variant="ghost" title="Delete salary revision" onClick={() => remove(r.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -143,7 +149,7 @@ export function SalaryRevisionDialog({ employee, open, onOpenChange, ctcOf }: {
 
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>Close</Button>
-          <Button onClick={save} className="bg-gradient-primary text-primary-foreground">Save revision</Button>
+          <Button onClick={save} disabled={saving || !period} className="bg-gradient-primary text-primary-foreground">{saving ? "Saving…" : "Save revision"}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

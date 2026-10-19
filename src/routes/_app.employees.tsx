@@ -81,7 +81,7 @@ type Employee = {
   pf_enabled: boolean; esi_enabled: boolean; tds_enabled: boolean; status: string;
   bank_account?: string | null; pan?: string | null; ifsc_code?: string | null;
   date_of_birth?: string | null; wedding_anniversary?: string | null;
-  pf_number?: string | null; esi_number?: string | null; uan?: string | null;
+  pf_number?: string | null; esi_number?: string | null; uan?: string | null; exit_date?: string | null;
 };
 
 function grossOf(e: Partial<Employee>) {
@@ -168,7 +168,7 @@ function EmployeesPage() {
     setExitTarget(null);
     const { error } = await supabase.from("employees").update({ status: "inactive", exit_date } as any).eq("id", e.id);
     if (error) { toast.error(error.message); return; }
-    toast.success(`${e.full_name} marked inactive`);
+    toast.success(e.status === "inactive" ? "Exit date updated" : `${e.full_name} marked inactive`);
     qc.invalidateQueries({ queryKey: ["employees"] });
   };
 
@@ -355,6 +355,7 @@ function EmployeesPage() {
                     <div className="flex items-center gap-2">
                       <Switch className="no-print" checked={e.status === "active"} onCheckedChange={() => toggleStatus(e)} aria-label={`Mark ${e.full_name} active or inactive`} />
                       <Badge variant={e.status === "active" ? "default" : "secondary"}>{e.status === "active" ? "active" : ((e as any).exit_date ? `exit ${(e as any).exit_date}` : "inactive")}</Badge>
+                      {e.status === "inactive" && <Button size="icon" variant="ghost" className="no-print shrink-0" title="Edit exit date" aria-label={`Edit exit date for ${e.full_name}`} onClick={() => setExitTarget(e)}><Pencil className="h-4 w-4" /></Button>}
                     </div>
                   </TableCell>
                   <TableCell className="text-right no-print">
@@ -369,7 +370,7 @@ function EmployeesPage() {
         </div>
       </Card>
       <SalaryRevisionDialog employee={revising as any} open={!!revising} onOpenChange={(o) => { if (!o) setRevising(null); }} ctcOf={ctcOf} />
-      <ExitDateDialog open={!!exitTarget} personName={exitTarget?.full_name ?? ""} onOpenChange={(o) => { if (!o) setExitTarget(null); }} onConfirm={confirmExit} />
+      <ExitDateDialog open={!!exitTarget} personName={exitTarget?.full_name ?? ""} initialDate={exitTarget?.exit_date} editing={exitTarget?.status === "inactive"} onOpenChange={(o) => { if (!o) setExitTarget(null); }} onConfirm={confirmExit} />
     </div>
   );
 }
