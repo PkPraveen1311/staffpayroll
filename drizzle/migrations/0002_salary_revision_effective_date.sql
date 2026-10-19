@@ -1,0 +1,3 @@
+ALTER TABLE public.salary_revisions ADD COLUMN effective_date date;
+UPDATE public.salary_revisions SET effective_date = make_date(effective_year, effective_month, 1) WHERE effective_date IS NULL;
+ALTER TABLE public.salary_revisions ADD CONSTRAINT salary_revision_date_matches_month CHECK (effective_date IS NULL OR (extract(year FROM effective_date) = effective_year AND extract(month FROM effective_date) = effective_month));

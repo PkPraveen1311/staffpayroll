@@ -15,6 +15,13 @@
       "when": 1791535926660,
       "tag": "0001_exit_date",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792422964776,
+      "tag": "0002_salary_revision_effective_date",
+      "breakpoints": true
     }
   ]
 }
