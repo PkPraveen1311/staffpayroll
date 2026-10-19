@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
-import { resolveSalaryRevisions, revisionMonth, type SalaryRevision } from "./salary-revisions";
+import { resolveSalaryRevisions, revisionMonth } from "./salary-revisions";
 
 const employee = { id: "employee", basic_salary: 15000, pf_enabled: false };
-const revision: SalaryRevision = {
+const revision = {
   id: "revision", employee_id: "employee", effective_date: "2027-04-19", effective_year: 2027, effective_month: 4,
   basic_salary: 20000, hra: 0, allowances: 0, medical_allowance: 0, leave_encashment: 0,
   statutory_bonus: 0, special_allowance: 0, pf_enabled: true, esi_enabled: false, tds_enabled: false, notes: null,
