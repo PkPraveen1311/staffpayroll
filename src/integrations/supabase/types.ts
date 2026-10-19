@@ -762,6 +762,7 @@ export type Database = {
           allowances: number
           basic_salary: number
           created_at: string
+          effective_date: string | null
           effective_month: number
           effective_year: number
           employee_id: string
@@ -780,6 +781,7 @@ export type Database = {
           allowances?: number
           basic_salary?: number
           created_at?: string
+          effective_date?: string | null
           effective_month: number
           effective_year: number
           employee_id: string
@@ -798,6 +800,7 @@ export type Database = {
           allowances?: number
           basic_salary?: number
           created_at?: string
+          effective_date?: string | null
           effective_month?: number
           effective_year?: number
           employee_id?: string

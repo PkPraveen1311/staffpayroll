@@ -79,7 +79,7 @@ type Agent = {
   ifsc_code: string | null; bank_name: string | null; tds_enabled: boolean; status: string; notes: string | null;
   department: string | null; designation: string | null; joining_date: string | null;
   date_of_birth: string | null; wedding_anniversary: string | null;
-  pay_type: string; fixed_monthly_amount: number;
+  pay_type: string; fixed_monthly_amount: number; exit_date?: string | null;
 };
 
 type Payment = {
@@ -197,7 +197,7 @@ function CommissionAgentsPage() {
     setExitTarget(null);
     const { error } = await supabase.from("commission_agents").update({ status: "inactive", exit_date } as any).eq("id", a.id);
     if (error) { toast.error(error.message); return; }
-    toast.success(`${a.full_name} marked inactive`);
+    toast.success(a.status === "inactive" ? "Exit date updated" : `${a.full_name} marked inactive`);
     qc.invalidateQueries({ queryKey: ["commission-agents"] });
     qc.invalidateQueries({ queryKey: ["commission-agents-active"] });
   };
@@ -312,6 +312,7 @@ function CommissionAgentsPage() {
                         <div className="flex items-center gap-2">
                           <Switch className="print:hidden" checked={a.status === "active"} onCheckedChange={() => toggleAgentStatus(a)} aria-label={`Mark ${a.full_name} active or inactive`} />
                           <Badge variant={a.status === "active" ? "default" : "secondary"}>{a.status === "active" ? "active" : ((a as any).exit_date ? `exit ${(a as any).exit_date}` : "inactive")}</Badge>
+                          {a.status === "inactive" && <Button size="icon" variant="ghost" className="print:hidden shrink-0" title="Edit exit date" aria-label={`Edit exit date for ${a.full_name}`} onClick={() => setExitTarget(a)}><Pencil className="h-4 w-4" /></Button>}
                         </div>
                       </TableCell>
                       <TableCell className="text-right">{fmtINR(t.gross)}</TableCell>
@@ -460,7 +461,7 @@ function CommissionAgentsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      <ExitDateDialog open={!!exitTarget} personName={exitTarget?.full_name ?? ""} onOpenChange={(o) => { if (!o) setExitTarget(null); }} onConfirm={confirmAgentExit} />
+      <ExitDateDialog open={!!exitTarget} personName={exitTarget?.full_name ?? ""} initialDate={exitTarget?.exit_date} editing={exitTarget?.status === "inactive"} onOpenChange={(o) => { if (!o) setExitTarget(null); }} onConfirm={confirmAgentExit} />
     </div>
   );
 }
