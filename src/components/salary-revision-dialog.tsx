@@ -12,6 +12,9 @@ import { fmtINR } from "@/lib/format";
 import { resolveSalaryRevisions, revisionMonth, type SalaryRevision } from "@/lib/salary-revisions";
 
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+// Stable empty array: an inline default would create a new identity every render
+// and re-trigger the prefill effect in an infinite loop.
+const NO_REVISIONS: SalaryRevision[] = [];
 const NUM_FIELDS: [keyof SalaryRevision, string][] = [
   ["basic_salary", "Basic salary (₹)"], ["hra", "HRA (₹)"], ["allowances", "Other Allowances (₹)"],
   ["medical_allowance", "Medical Allowance (₹)"], ["leave_encashment", "Leave Encashment (₹)"],
@@ -34,7 +37,7 @@ export function SalaryRevisionDialog({ employee, open, onOpenChange, ctcOf }: {
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const { data: revisions = [] } = useQuery({
+  const { data: revisions = NO_REVISIONS } = useQuery({
     queryKey: ["salary_revisions", employee?.id],
     enabled: !!employee && open,
     queryFn: async () => {
