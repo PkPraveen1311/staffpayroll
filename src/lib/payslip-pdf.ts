@@ -54,34 +54,25 @@ export async function generatePayslipPdf(slip: any, period: string) {
   const H = 297;
   const M = 12;
 
-  // Logo
+  // Brand mark
   const logo = await getLogoData();
   if (logo) {
-    try { doc.addImage(logo, "PNG", M, M, 28, 20); } catch {}
+    try { doc.addImage(logo, "PNG", M, M + 1, 42, 28.3); } catch {}
   }
 
-  // Header brand
+  // Keep the payslip title to the right of the enlarged logo.
   doc.setFont("helvetica", "bold");
   doc.setTextColor(20, 20, 20);
-  doc.setFontSize(20);
-  doc.text("PEHCHAAN", W / 2, M + 8, { align: "center" });
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(8);
-  doc.setTextColor(90, 90, 90);
-  doc.text("FEEL GOOD & LOOK GREAT", W / 2, M + 13, { align: "center" });
-
   doc.setFontSize(11);
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(20, 20, 20);
-  doc.text(`Salary Slip — ${period}`, W / 2, M + 22, { align: "center" });
+  doc.text(`Salary Slip — ${period}`, W - M, M + 17, { align: "right" });
 
   // Divider
   doc.setDrawColor(180, 180, 180);
   doc.setLineWidth(0.4);
-  doc.line(M, M + 26, W - M, M + 26);
+  doc.line(M, M + 31, W - M, M + 31);
 
   // Employee info box
-  let y = M + 32;
+  let y = M + 37;
   const emp = slip.employees ?? {};
   doc.setFontSize(9);
   doc.setFont("helvetica", "bold");
