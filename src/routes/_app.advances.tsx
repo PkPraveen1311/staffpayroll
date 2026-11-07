@@ -212,7 +212,7 @@ function EmployeeAdvances() {
       notes: isDeposit ? (note ? `Deposit: ${note}` : "Deposit") : (note || null),
     }).eq("id", editingRepayment.id);
     if (error) { toast.error(error.message); return; }
-    toast.success("Repayment updated");
+    toast.success(isDeposit ? "Deposit updated" : "Repayment updated");
     setEditingRepayment(null);
     qc.invalidateQueries({ queryKey: ["advance-repayments"] });
   };
@@ -657,7 +657,7 @@ function EmployeeAdvances() {
                             <span className="font-medium">{fmtINR(rp.amount)}</span>
                             {!/\[(PAYROLL|COMMISSION):/.test(rp.notes ?? "") && (
                               <>
-                                <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => openRepaymentEdit(rp)} title="Edit repayment" aria-label="Edit repayment">
+                                <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => openRepaymentEdit(rp)} title={rp.notes?.startsWith("Deposit") ? "Edit deposit" : "Edit repayment"} aria-label={rp.notes?.startsWith("Deposit") ? "Edit deposit" : "Edit repayment"}>
                                   <Pencil className="h-3 w-3" />
                                 </Button>
                                 <Button size="icon" variant="ghost" className="h-6 w-6 text-muted-foreground hover:text-destructive" onClick={() => deleteRepayment(rp.id)} title="Remove repayment" aria-label="Remove repayment">
@@ -727,7 +727,7 @@ function EmployeeAdvances() {
 
       <Dialog open={!!editingRepayment} onOpenChange={(open) => { if (!open) setEditingRepayment(null); }}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Edit repayment or deposit</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{editingRepayment?.notes?.startsWith("Deposit") ? "Edit deposit" : "Edit repayment"}</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5"><Label>Amount (₹)</Label><Input type="number" min={1} value={editRepayAmt} onChange={(event) => setEditRepayAmt(event.target.value)} /></div>
