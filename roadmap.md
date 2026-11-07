@@ -2,4 +2,4 @@
 - [x] Verify colored output with existing records and preserved page breaks.
 - [x] Allow editing employee and agent exit dates.
 - [x] Record exact salary revision dates and apply changes to the whole effective month; verify both flows.
-- [ ] Simplify the advances workflow and allow manual repayment/deposit entries to be edited for employees and agents; protect automatic payroll deductions from manual edits.
+- [x] Simplify the advances workflow and allow manual repayment/deposit entries to be edited for employees and agents; protect automatic payroll deductions from manual edits.

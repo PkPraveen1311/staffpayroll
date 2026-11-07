@@ -187,7 +187,7 @@ function EmployeeAdvances() {
     setEditingRepayment(repayment);
     setEditRepayAmt(String(repayment.amount));
     setEditRepayDate(repayment.repaid_on);
-    setEditRepayNotes((repayment.notes ?? "").replace(/^Deposit:\s*/, ""));
+    setEditRepayNotes((repayment.notes ?? "").replace(/^Deposit(?::\s*)?/, ""));
   };
 
   const saveRepaymentEdit = async () => {
@@ -618,18 +618,7 @@ function EmployeeAdvances() {
 
 
       <Card className="bg-gradient-card border-border/60 shadow-elegant">
-        <CardHeader className="flex flex-row items-center justify-between gap-3">
-          <CardTitle>Advances</CardTitle>
-          <div className="w-64">
-            <Select value={filterEmp} onValueChange={setFilterEmp}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All employees</SelectItem>
-                {employees.map(e => <SelectItem key={e.id} value={e.id}>{e.full_name}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-        </CardHeader>
+        <CardHeader><CardTitle>Advances</CardTitle></CardHeader>
         <CardContent className="p-0">
           <Table>
             <TableHeader>

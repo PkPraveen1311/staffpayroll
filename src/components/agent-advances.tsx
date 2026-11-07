@@ -168,7 +168,7 @@ export function AgentAdvancesSection() {
     setEditingRepayment(repayment);
     setEditRepayAmt(String(repayment.amount));
     setEditRepayDate(repayment.repaid_on);
-    setEditRepayNotes((repayment.notes ?? "").replace(/^Deposit:\s*/, ""));
+    setEditRepayNotes((repayment.notes ?? "").replace(/^Deposit(?::\s*)?/, ""));
   };
 
   const saveRepaymentEdit = async () => {
