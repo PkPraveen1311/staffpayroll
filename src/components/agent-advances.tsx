@@ -14,7 +14,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { toast } from "sonner";
 import { fmtINR } from "@/lib/format";
 import { exportToXlsx } from "@/lib/xlsx-export";
-import { Plus, Trash2, FileSpreadsheet, IndianRupee, HandCoins, Wallet, Printer } from "lucide-react";
+import { Plus, Trash2, FileSpreadsheet, IndianRupee, HandCoins, Wallet, Printer, Pencil } from "lucide-react";
 import { printLedgers } from "@/lib/ledger-print";
 
 type Agent = { id: string; full_name: string; agent_code: string; department: string | null };
@@ -36,6 +36,10 @@ export function AgentAdvancesSection() {
   const [repayAmt, setRepayAmt] = useState("");
   const [repayDate, setRepayDate] = useState(today());
   const [repayNotes, setRepayNotes] = useState("");
+  const [editingRepayment, setEditingRepayment] = useState<Repayment | null>(null);
+  const [editRepayAmt, setEditRepayAmt] = useState("");
+  const [editRepayDate, setEditRepayDate] = useState("");
+  const [editRepayNotes, setEditRepayNotes] = useState("");
 
   const [depositOpen, setDepositOpen] = useState(false);
   const [depAgentId, setDepAgentId] = useState("");
@@ -157,6 +161,40 @@ export function AgentAdvancesSection() {
     if (error) { toast.error(error.message); return; }
     toast.success("Repayment recorded");
     setRepayOpen(null); setRepayAmt(""); setRepayNotes("");
+    refreshRep();
+  };
+
+  const openRepaymentEdit = (repayment: Repayment) => {
+    setEditingRepayment(repayment);
+    setEditRepayAmt(String(repayment.amount));
+    setEditRepayDate(repayment.repaid_on);
+    setEditRepayNotes((repayment.notes ?? "").replace(/^Deposit(?::\s*)?/, ""));
+  };
+
+  const saveRepaymentEdit = async () => {
+    if (!editingRepayment) return;
+    const amountValue = Number(editRepayAmt);
+    if (!Number.isFinite(amountValue) || amountValue <= 0 || !editRepayDate) {
+      toast.error("Enter a valid amount and date");
+      return;
+    }
+    const advance = advances.find((item) => item.id === editingRepayment.advance_id);
+    if (!advance) { toast.error("Advance record not found"); return; }
+    const otherRepaid = repayments
+      .filter((item) => item.advance_id === editingRepayment.advance_id && item.id !== editingRepayment.id)
+      .reduce((sum, item) => sum + Number(item.amount), 0);
+    const available = Math.max(0, Number(advance.amount) - otherRepaid);
+    if (amountValue > available) { toast.error(`Amount exceeds available balance (${fmtINR(available)})`); return; }
+    const isDeposit = (editingRepayment.notes ?? "").startsWith("Deposit");
+    const note = editRepayNotes.trim();
+    const { error } = await supabase.from("agent_advance_repayments").update({
+      amount: amountValue,
+      repaid_on: editRepayDate,
+      notes: isDeposit ? (note ? `Deposit: ${note}` : "Deposit") : (note || null),
+    }).eq("id", editingRepayment.id);
+    if (error) { toast.error(error.message); return; }
+    toast.success(isDeposit ? "Deposit updated" : "Repayment updated");
+    setEditingRepayment(null);
     refreshRep();
   };
 
@@ -418,7 +456,16 @@ export function AgentAdvancesSection() {
                           <span key={rp.id} className="inline-flex items-center gap-1 text-[11px] rounded-md border border-border/60 px-1.5 py-0.5">
                             <span className="text-muted-foreground">{rp.repaid_on}:</span>
                             <span className="font-medium">{fmtINR(rp.amount)}</span>
-                            <button className="ml-1 text-muted-foreground hover:text-destructive" onClick={() => deleteRepayment(rp.id)} title="Remove"><Trash2 className="h-3 w-3" /></button>
+                            {!/\[(PAYROLL|COMMISSION):/.test(rp.notes ?? "") && (
+                              <>
+                                <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => openRepaymentEdit(rp)} title={rp.notes?.startsWith("Deposit") ? "Edit deposit" : "Edit repayment"} aria-label={rp.notes?.startsWith("Deposit") ? "Edit deposit" : "Edit repayment"}>
+                                  <Pencil className="h-3 w-3" />
+                                </Button>
+                                <Button size="icon" variant="ghost" className="h-6 w-6 text-muted-foreground hover:text-destructive" onClick={() => deleteRepayment(rp.id)} title="Remove repayment" aria-label="Remove repayment">
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              </>
+                            )}
                           </span>
                         ))}
                       </div>
@@ -469,6 +516,23 @@ export function AgentAdvancesSection() {
           </Table>
         </CardContent>
       </Card>
+
+      <Dialog open={!!editingRepayment} onOpenChange={(open) => { if (!open) setEditingRepayment(null); }}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>{editingRepayment?.notes?.startsWith("Deposit") ? "Edit deposit" : "Edit repayment"}</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5"><Label>Amount (₹)</Label><Input type="number" min={1} value={editRepayAmt} onChange={(event) => setEditRepayAmt(event.target.value)} /></div>
+              <div className="space-y-1.5"><Label>Date</Label><Input type="date" value={editRepayDate} onChange={(event) => setEditRepayDate(event.target.value)} /></div>
+            </div>
+            <div className="space-y-1.5"><Label>Notes</Label><Input value={editRepayNotes} onChange={(event) => setEditRepayNotes(event.target.value)} placeholder="Optional" /></div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingRepayment(null)}>Cancel</Button>
+            <Button onClick={saveRepaymentEdit}>Save changes</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
