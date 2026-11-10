@@ -50,6 +50,7 @@ function EmployeeAdvances() {
   const [givenOn, setGivenOn] = useState(new Date().toISOString().slice(0, 10));
   const [notes, setNotes] = useState("");
   const [filterEmp, setFilterEmp] = useState<string>("all");
+  const [openLedgers, setOpenLedgers] = useState<string[]>([]);
 
   const [repayOpen, setRepayOpen] = useState<string | null>(null);
   const [repayAmt, setRepayAmt] = useState("");
@@ -547,7 +548,10 @@ function EmployeeAdvances() {
             <p className="text-xs text-muted-foreground mt-1">One running account per employee — every advance adds, every repayment subtracts.</p>
           </div>
           <div className="w-64">
-            <Select value={filterEmp} onValueChange={setFilterEmp}>
+            <Select value={filterEmp} onValueChange={(value) => {
+              setFilterEmp(value);
+              setOpenLedgers(value === "all" ? [] : [value]);
+            }}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All employees</SelectItem>
@@ -560,7 +564,7 @@ function EmployeeAdvances() {
           {ledgers.length === 0 ? (
             <p className="text-sm text-muted-foreground py-6 text-center">No ledger entries yet.</p>
           ) : (
-            <Accordion type="multiple" className="w-full">
+            <Accordion type="multiple" value={openLedgers} onValueChange={setOpenLedgers} className="w-full">
               {ledgers.map(l => {
                 const emp = empMap.get(l.employee_id);
                 return (
