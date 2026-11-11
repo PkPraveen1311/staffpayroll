@@ -127,23 +127,23 @@ function EmployeeAdvances() {
   // Employee-wise single ledger: every advance (debit) and repayment (credit) in date order
   const ledgers = useMemo(() => {
     const advById = new Map(advances.map(a => [a.id, a]));
-    const byEmp = new Map<string, { date: string; type: "advance" | "repayment"; particulars: string; debit: number; credit: number }[]>();
+    const byEmp = new Map<string, { id: string; advanceId: string; repayment?: Repayment; date: string; type: "advance" | "repayment"; particulars: string; debit: number; credit: number }[]>();
 
     advances.forEach(a => {
       const list = byEmp.get(a.employee_id) ?? [];
-      list.push({ date: a.given_on, type: "advance", particulars: a.notes || "Advance given", debit: Number(a.amount), credit: 0 });
+      list.push({ id: `advance:${a.id}`, advanceId: a.id, date: a.given_on, type: "advance", particulars: a.notes || "Advance given", debit: Number(a.amount), credit: 0 });
       byEmp.set(a.employee_id, list);
     });
     repayments.forEach(r => {
       const a = advById.get(r.advance_id);
       if (!a) return;
       const list = byEmp.get(a.employee_id) ?? [];
-      list.push({ date: r.repaid_on, type: "repayment", particulars: r.notes || "Repayment", debit: 0, credit: Number(r.amount) });
+      list.push({ id: `repayment:${r.id}`, advanceId: r.advance_id, repayment: r, date: r.repaid_on, type: "repayment", particulars: r.notes || "Repayment", debit: 0, credit: Number(r.amount) });
       byEmp.set(a.employee_id, list);
     });
 
     const out = Array.from(byEmp.entries()).map(([employee_id, entries]) => {
-      entries.sort((x, y) => x.date.localeCompare(y.date) || (x.type === "advance" ? -1 : 1));
+      entries.sort((x, y) => x.date.localeCompare(y.date) || (x.type === y.type ? x.id.localeCompare(y.id) : x.type === "advance" ? -1 : 1));
       let bal = 0;
       const withBal = entries.map(e => { bal += e.debit - e.credit; return { ...e, balance: bal }; });
       const debit = entries.reduce((s, e) => s + e.debit, 0);
@@ -173,10 +173,19 @@ function EmployeeAdvances() {
     qc.invalidateQueries({ queryKey: ["advances"] });
   };
 
+  const getOutstanding = (advanceId: string) => {
+    const advance = advances.find((item) => item.id === advanceId);
+    const repaid = (repayByAdv.get(advanceId) ?? []).reduce((sum, repayment) => sum + Number(repayment.amount), 0);
+    return Math.max(0, Number(advance?.amount ?? 0) - repaid);
+  };
+
   const addRepayment = async (advanceId: string) => {
-    if (!repayAmt) { toast.error("Amount required"); return; }
+    const amountValue = Number(repayAmt);
+    if (!Number.isFinite(amountValue) || amountValue <= 0) { toast.error("Enter an amount greater than zero"); return; }
+    const outstanding = getOutstanding(advanceId);
+    if (amountValue > outstanding) { toast.error(`Amount exceeds available balance (${fmtINR(outstanding)})`); return; }
     const { error } = await supabase.from("advance_repayments").insert({
-      advance_id: advanceId, amount: Number(repayAmt), repaid_on: repayDate, notes: repayNotes || null,
+      advance_id: advanceId, amount: amountValue, repaid_on: repayDate, notes: repayNotes || null,
     });
     if (error) { toast.error(error.message); return; }
     toast.success("Repayment recorded");
@@ -253,6 +262,14 @@ function EmployeeAdvances() {
     toast.success("Deposit recorded");
     setDepositOpen(false); setDepEmpId(""); setDepAmt(""); setDepNotes("");
     qc.invalidateQueries({ queryKey: ["advance-repayments"] });
+  };
+
+  const openLedgerDeposit = (employeeId: string) => {
+    setDepEmpId(employeeId);
+    setDepAmt("");
+    setDepDate(new Date().toISOString().slice(0, 10));
+    setDepNotes("");
+    setDepositOpen(true);
   };
 
   const deleteAdvance = async (id: string) => {
@@ -451,10 +468,7 @@ function EmployeeAdvances() {
           <Button variant="outline" onClick={printLedger}><Printer className="h-4 w-4 mr-1" /> Print Ledger</Button>
           <Button variant="outline" onClick={exportPdf}><FileDown className="h-4 w-4 mr-1" /> PDF</Button>
           <Button variant="outline" onClick={exportXlsx}><FileSpreadsheet className="h-4 w-4 mr-1" /> Excel</Button>
-          <Dialog open={depositOpen} onOpenChange={(o) => { setDepositOpen(o); if (o) { setDepEmpId(""); setDepAmt(""); setDepDate(new Date().toISOString().slice(0, 10)); setDepNotes(""); } }}>
-            <DialogTrigger asChild>
-              <Button variant="outline" className="border-emerald-500/60 text-emerald-600 hover:text-emerald-700 dark:text-emerald-400"><Wallet className="h-4 w-4 mr-1" /> New Deposit</Button>
-            </DialogTrigger>
+          <Dialog open={depositOpen} onOpenChange={setDepositOpen}>
             <DialogContent>
               <DialogHeader><DialogTitle>Record employee deposit</DialogTitle></DialogHeader>
               <div className="space-y-3">
@@ -583,6 +597,9 @@ function EmployeeAdvances() {
                       </div>
                     </AccordionTrigger>
                     <AccordionContent>
+                      <div className="flex justify-end pb-3">
+                        <Button variant="outline" size="sm" onClick={() => openLedgerDeposit(l.employee_id)}><Wallet className="h-4 w-4 mr-1" /> Add deposit</Button>
+                      </div>
                       <Table>
                         <TableHeader>
                           <TableRow>
@@ -591,16 +608,41 @@ function EmployeeAdvances() {
                             <TableHead className="text-right">Advance (Dr)</TableHead>
                             <TableHead className="text-right">Repaid (Cr)</TableHead>
                             <TableHead className="text-right">Balance</TableHead>
+                            <TableHead className="w-28 text-right">Actions</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {l.entries.map((e, i) => (
-                            <TableRow key={i}>
+                          {l.entries.map((e) => (
+                            <TableRow key={e.id}>
                               <TableCell className="font-mono text-xs">{e.date}</TableCell>
                               <TableCell className="text-sm">{e.particulars}</TableCell>
                               <TableCell className="text-right">{e.debit ? fmtINR(e.debit) : "—"}</TableCell>
                               <TableCell className="text-right text-emerald-600 dark:text-emerald-400">{e.credit ? fmtINR(e.credit) : "—"}</TableCell>
                               <TableCell className="text-right font-semibold">{fmtINR(Math.max(0, e.balance))}</TableCell>
+                              <TableCell className="text-right">
+                                {e.debit > 0 ? (
+                                  <Dialog open={repayOpen === e.advanceId} onOpenChange={(open) => { setRepayOpen(open ? e.advanceId : null); if (open) { setRepayAmt(""); setRepayDate(new Date().toISOString().slice(0, 10)); setRepayNotes(""); } }}>
+                                    <DialogTrigger asChild><Button size="sm" variant="outline" disabled={getOutstanding(e.advanceId) <= 0}><HandCoins className="h-4 w-4 mr-1" /> Payment</Button></DialogTrigger>
+                                    <DialogContent>
+                                      <DialogHeader><DialogTitle>Record repayment</DialogTitle></DialogHeader>
+                                      <div className="space-y-3">
+                                        <div className="text-sm text-muted-foreground">Outstanding: <span className="font-semibold text-foreground">{fmtINR(getOutstanding(e.advanceId))}</span></div>
+                                        <div className="grid grid-cols-2 gap-3">
+                                          <div className="space-y-1.5"><Label>Amount (₹)</Label><Input type="number" min={1} max={getOutstanding(e.advanceId)} value={repayAmt} onChange={(event) => setRepayAmt(event.target.value)} /></div>
+                                          <div className="space-y-1.5"><Label>Date</Label><Input type="date" value={repayDate} onChange={(event) => setRepayDate(event.target.value)} /></div>
+                                        </div>
+                                        <div className="space-y-1.5"><Label>Notes</Label><Input value={repayNotes} onChange={(event) => setRepayNotes(event.target.value)} placeholder="Optional" /></div>
+                                      </div>
+                                      <DialogFooter><Button variant="outline" onClick={() => setRepayOpen(null)}>Cancel</Button><Button onClick={() => addRepayment(e.advanceId)}>Save payment</Button></DialogFooter>
+                                    </DialogContent>
+                                  </Dialog>
+                                ) : e.repayment && !/\[(PAYROLL|COMMISSION):/.test(e.repayment.notes ?? "") ? (
+                                  <div className="flex justify-end gap-1">
+                                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openRepaymentEdit(e.repayment!)} title="Edit deposit or payment" aria-label="Edit deposit or payment"><Pencil className="h-3 w-3" /></Button>
+                                    <Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => deleteRepayment(e.repayment!.id)} title="Remove deposit or payment" aria-label="Remove deposit or payment"><Trash2 className="h-3 w-3" /></Button>
+                                  </div>
+                                ) : null}
+                              </TableCell>
                             </TableRow>
                           ))}
                           <TableRow className="bg-muted/40">
@@ -608,6 +650,7 @@ function EmployeeAdvances() {
                             <TableCell className="text-right font-semibold">{fmtINR(l.debit)}</TableCell>
                             <TableCell className="text-right font-semibold text-emerald-600 dark:text-emerald-400">{fmtINR(l.credit)}</TableCell>
                             <TableCell className="text-right font-bold">{fmtINR(l.balance)}</TableCell>
+                            <TableCell />
                           </TableRow>
                         </TableBody>
                       </Table>
@@ -632,7 +675,7 @@ function EmployeeAdvances() {
                 <TableHead className="text-right">Advance</TableHead>
                 <TableHead className="text-right">Repaid</TableHead>
                 <TableHead className="text-right">Outstanding</TableHead>
-                <TableHead>Repayments</TableHead>
+                <TableHead>Payments recorded</TableHead>
                 <TableHead className="text-right w-40">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -653,57 +696,9 @@ function EmployeeAdvances() {
                     <TableCell className="text-right">
                       <Badge variant={r.outstanding > 0 ? "destructive" : "secondary"}>{fmtINR(r.outstanding)}</Badge>
                     </TableCell>
-                    <TableCell>
-                      <div className="flex flex-wrap gap-1">
-                        {r.reps.length === 0 ? <span className="text-xs text-muted-foreground">—</span> : r.reps.map(rp => (
-                          <span key={rp.id} className="inline-flex items-center gap-1 text-[11px] rounded-md border border-border/60 px-1.5 py-0.5">
-                            <span className="text-muted-foreground">{monthLabel(rp.repaid_on.slice(0, 7))}:</span>
-                            <span className="font-medium">{fmtINR(rp.amount)}</span>
-                            {!/\[(PAYROLL|COMMISSION):/.test(rp.notes ?? "") && (
-                              <>
-                                <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => openRepaymentEdit(rp)} title={rp.notes?.startsWith("Deposit") ? "Edit deposit" : "Edit repayment"} aria-label={rp.notes?.startsWith("Deposit") ? "Edit deposit" : "Edit repayment"}>
-                                  <Pencil className="h-3 w-3" />
-                                </Button>
-                                <Button size="icon" variant="ghost" className="h-6 w-6 text-muted-foreground hover:text-destructive" onClick={() => deleteRepayment(rp.id)} title="Remove repayment" aria-label="Remove repayment">
-                                  <Trash2 className="h-3 w-3" />
-                                </Button>
-                              </>
-                            )}
-                          </span>
-                        ))}
-                      </div>
-                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{r.reps.length} {r.reps.length === 1 ? "entry" : "entries"} — details in ledger</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
-                        <Dialog open={repayOpen === r.id} onOpenChange={(o) => { setRepayOpen(o ? r.id : null); if (o) { setRepayAmt(""); setRepayDate(new Date().toISOString().slice(0, 10)); setRepayNotes(""); } }}>
-                          <DialogTrigger asChild>
-                            <Button size="sm" variant="outline" disabled={r.outstanding <= 0}><HandCoins className="h-4 w-4 mr-1" /> Repay</Button>
-                          </DialogTrigger>
-                          <DialogContent>
-                            <DialogHeader><DialogTitle>Record repayment</DialogTitle></DialogHeader>
-                            <div className="space-y-3">
-                              <div className="text-sm text-muted-foreground">Outstanding: <span className="font-semibold text-foreground">{fmtINR(r.outstanding)}</span></div>
-                              <div className="grid grid-cols-2 gap-3">
-                                <div className="space-y-1.5">
-                                  <Label>Amount (₹)</Label>
-                                  <Input type="number" min={1} max={r.outstanding} value={repayAmt} onChange={e => setRepayAmt(e.target.value)} />
-                                </div>
-                                <div className="space-y-1.5">
-                                  <Label>Date</Label>
-                                  <Input type="date" value={repayDate} onChange={e => setRepayDate(e.target.value)} />
-                                </div>
-                              </div>
-                              <div className="space-y-1.5">
-                                <Label>Notes</Label>
-                                <Input value={repayNotes} onChange={e => setRepayNotes(e.target.value)} placeholder="Optional" />
-                              </div>
-                            </div>
-                            <DialogFooter>
-                              <Button variant="outline" onClick={() => setRepayOpen(null)}>Cancel</Button>
-                              <Button onClick={() => addRepayment(r.id)}>Save</Button>
-                            </DialogFooter>
-                          </DialogContent>
-                        </Dialog>
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
                             <Button size="sm" variant="ghost" className="text-destructive"><Trash2 className="h-4 w-4" /></Button>
