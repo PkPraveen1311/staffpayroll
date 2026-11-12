@@ -622,7 +622,7 @@ function EmployeeAdvances() {
                               <TableCell className="text-right">
                                 {e.debit > 0 ? (
                                   <Dialog open={repayOpen === e.advanceId} onOpenChange={(open) => { setRepayOpen(open ? e.advanceId : null); if (open) { setRepayAmt(""); setRepayDate(new Date().toISOString().slice(0, 10)); setRepayNotes(""); } }}>
-                                    <DialogTrigger asChild><Button size="sm" variant="outline" disabled={getOutstanding(e.advanceId) <= 0}><HandCoins className="h-4 w-4 mr-1" /> Payment</Button></DialogTrigger>
+                                    <DialogTrigger asChild><Button size="sm" variant="outline" disabled={getOutstanding(e.advanceId) <= 0}><HandCoins className="h-4 w-4 mr-1" /> Add payment</Button></DialogTrigger>
                                     <DialogContent>
                                       <DialogHeader><DialogTitle>Record repayment</DialogTitle></DialogHeader>
                                       <div className="space-y-3">
